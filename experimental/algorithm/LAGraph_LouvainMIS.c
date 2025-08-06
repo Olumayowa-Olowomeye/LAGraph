@@ -265,7 +265,7 @@ int LAGraph_LouvainMIS(
 
     GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
     // dbg(x);
-    GRB_TRY(LAGraph_IsolateSets(&iset, G, seed, msg));
+    GRB_TRY(LAGraph_IsolateSets(&iset, G,NULL, seed, msg));
     dbg(iset);
     GrB_Index niset;
     GrB_Vector_nvals(&niset, iset);

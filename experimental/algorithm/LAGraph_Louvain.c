@@ -54,7 +54,7 @@ int LAGraph_Louvain(
 {
 #if LG_SUITESPARSE_GRAPHBLAS_V10
     char MATRIX_TYPE[LAGRAPH_MSG_LEN];
-    GrB_set(GrB_GLOBAL, true, GxB_BURBLE);
+    GrB_set(GrB_GLOBAL, false, GxB_BURBLE);
     // assignment of monoids, bops, and semis
     GrB_Monoid plusmon = GrB_PLUS_MONOID_FP64;
     GrB_Monoid maxmon = GrB_MAX_MONOID_FP64;
@@ -176,7 +176,7 @@ int LAGraph_Louvain(
             GRB_TRY(GrB_Vector_nvals(&nvals_t, t));
             while (nvals_t > 1)
             {
-                printf("------------nvals -----------%ld\n",nvals_t);
+                // printf("------------nvals -----------%ld\n",nvals_t);
                 GRB_TRY(LAGraph_Malloc((void **)&p_cs, nvals_t, sizeof(GrB_Index), msg)); // free p_cs and P-vals
                 GRB_TRY(LAGraph_Malloc((void **)&p_vals, nvals_t, sizeof(double), msg));
                 GRB_TRY(GrB_Vector_extractTuples_FP64(p_cs, p_vals, &nvals_t, t));

@@ -1468,6 +1468,7 @@ int LAGraph_IsolateSets(
     GrB_Vector *isolate_set,
     //input
     LAGraph_Graph G,
+    GrB_Vector ignore_node,
     uint64_t seed,
     char* msg
 );
@@ -1505,15 +1506,6 @@ int LAGraph_Louvain2
     char* msg
 );
 
-LAGRAPHX_PUBLIC
-int LAGraph_IsolateSets(
-    //output
-    GrB_Vector *isolate_set,
-    //input
-    LAGraph_Graph G,
-    uint64_t seed,
-    char* msg
-);
 
 LAGRAPHX_PUBLIC
 int LAGraph_coloring_MIS

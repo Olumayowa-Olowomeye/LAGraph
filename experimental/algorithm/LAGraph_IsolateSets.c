@@ -28,6 +28,7 @@ int LAGraph_IsolateSets(
     GrB_Vector *isolate_set,
     //input
     LAGraph_Graph G,
+    GrB_Vector ignore_node,
     uint64_t seed,
     char* msg
 ){
@@ -72,24 +73,26 @@ int LAGraph_IsolateSets(
     //rand
     // seed = 6247;
     // printf("%ld",seed);
-    GRB_TRY (GrB_assign (Seed, NULL, NULL, 1, GrB_ALL, n, NULL));
-    GRB_TRY (LAGraph_Random_Seed (Seed, seed, msg)) ;
+    GRB_TRY (GrB_assign (Seed, NULL, NULL, 0, GrB_ALL, n, NULL));
     dbg(Seed);
+    GRB_TRY(GrB_assign(degree,NULL,NULL,G->out_degree,GrB_ALL,n,NULL));
+    dbg(degree);
 
 
     GrB_Index ncandidates ;
-    GRB_TRY (GrB_assign (candidates, NULL, NULL, (bool) true, GrB_ALL,n, NULL)) ;
+    GRB_TRY (GrB_assign (candidates, ignore_node, NULL, (bool) true, GrB_ALL,n, GrB_DESC_C)) ;
+
+    GRB_TRY (LAGraph_Random_Seed (Seed, seed, msg)) ;
+
     GRB_TRY (GrB_Vector_nvals (&ncandidates, candidates)) ;
 
-    GRB_TRY(GrB_assign(degree,NULL,NULL,G->out_degree,GrB_ALL,n,NULL));
-    dbg(degree);
+    
     GRB_TRY (GrB_assign (score, NULL, NULL, Seed, GrB_ALL, n, NULL)) ;
     GRB_TRY (GrB_eWiseMult (score, NULL, NULL, GrB_DIV_FP32, score, degree,NULL)) ;
     dbg(score);
 
     dbg(candidates);
-    GRB_TRY (GrB_vxm (scoreA, candidates, NULL,
-        GrB_MAX_FIRST_SEMIRING_FP32, score, A, GrB_DESC_RS)) ;
+    GRB_TRY (GrB_vxm (scoreA, candidates, NULL,GrB_MAX_FIRST_SEMIRING_FP32, score, A, GrB_DESC_RS)) ;
     dbg(scoreA);
     GRB_TRY (GrB_vxm (neighbor_max, candidates, NULL,GrB_MAX_FIRST_SEMIRING_FP32, scoreA, A, GrB_DESC_RS)) ;
     dbg(neighbor_max);

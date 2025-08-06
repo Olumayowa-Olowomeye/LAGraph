@@ -18,9 +18,10 @@ typedef struct
 
 const matrix_info files[] = {
 
-    // {"comm0.mtx", 0.357142857142857},
-    // {"res1.mtx", 0.0},
+    {"comm0.mtx", 0.357142857142857},
+    {"res1.mtx", 0.0},
     {"karate2.mtx", .42},
+    {"50node.mtx", .42},
     {"",-1}  
 };
 //Store matrix by row
