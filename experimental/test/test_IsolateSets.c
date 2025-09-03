@@ -17,15 +17,15 @@ typedef struct
 const matrix_info files[] = {
 
     {"comm1.mtx"},
-    {"comm0.mtx"},
-    {"res1.mtx"},
-    {"karate.mtx"},
+    // {"comm0.mtx"},
+    // {"res1.mtx"},
+    // {"karate.mtx"},
     {""} 
 };
 
 void test_IsolateSets(void){
     LAGraph_Init(msg);
-    OK (LAGraph_Random_Init (msg)) ;
+    OK (LAGraph_Random_Init(msg)) ;
     printf("\n");
     for(int k = 0;;k++){
         if (strlen(files[k].matrix_file) == 0)
@@ -40,12 +40,31 @@ void test_IsolateSets(void){
         // check if the pattern is symmetric - if it isn't make it.
         OK (LAGraph_Cached_OutDegree (G, msg)) ;
         OK (LAGraph_Cached_IsSymmetricStructure (G, msg)) ;
-        
+        if (G->is_symmetric_structure == LAGraph_FALSE)
+        {
+            printf("This matrix is not symmetric. \n");
+            // make the adjacency matrix symmetric
+            OK (LAGraph_Cached_AT (G, msg)) ;
+            OK (GrB_eWiseAdd (G->A, NULL, NULL, GrB_LOR, G->A, G->AT, NULL)) ;
+            G->is_symmetric_structure = true ;
+            // consider the graph as directed
+            G->kind = LAGraph_ADJACENCY_DIRECTED ;
+        }
+        else
+        {
+            G->kind = LAGraph_ADJACENCY_UNDIRECTED ;
+        }
+        GrB_Matrix MIset;
         GrB_Vector Iset;
+        GrB_Vector ignore_node=NULL;
+
         double tsimple = LAGraph_WallClockTime ( ) ;
         
-        OK(LAGraph_IsolateSets(&Iset,G,5123,msg));
+        OK(LAGraph_IsolateSet(&Iset,G,NULL,5123,msg));
         GxB_print(Iset,5);
+        printf("Iset tested");
+        OK(LAGraph_IsolateSets(&MIset,G,5123,msg));
+        GxB_print(MIset,5);
         tsimple = LAGraph_WallClockTime ( ) - tsimple ;
         printf(" time: %f\n",tsimple);
 

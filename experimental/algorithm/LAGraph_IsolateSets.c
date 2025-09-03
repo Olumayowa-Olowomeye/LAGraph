@@ -17,13 +17,20 @@
     GrB_free(&Seed) ; \
     GrB_free(&degree) ; \
 }
-#define DEBUG 0
+#define DEBUG 1
 #define dbg(x) if (DEBUG) GxB_print(x,5)
+#define err(x, info)                                    \
+    if (!(info == GrB_SUCCESS || info == GrB_NO_VALUE)) \
+    {                                                   \
+        char **err;                                     \
+        GrB_error(err, x);                              \
+        printf("\ninfo: %d error: %s\n", info, err);   \
+    }
 typedef GrB_Matrix mat;
 typedef GrB_Vector vec ;
 typedef GrB_Scalar sca; 
 typedef GrB_Index idx;
-int LAGraph_IsolateSets(
+int LAGraph_IsolateSet(
     //output
     GrB_Vector *isolate_set,
     //input
@@ -73,26 +80,31 @@ int LAGraph_IsolateSets(
     //rand
     // seed = 6247;
     // printf("%ld",seed);
-    GRB_TRY (GrB_assign (Seed, NULL, NULL, 0, GrB_ALL, n, NULL));
-    dbg(Seed);
-    GRB_TRY(GrB_assign(degree,NULL,NULL,G->out_degree,GrB_ALL,n,NULL));
+     GRB_TRY(GrB_assign(degree,NULL,NULL,G->out_degree,GrB_ALL,n,NULL));
     dbg(degree);
 
-
     GrB_Index ncandidates ;
-    GRB_TRY (GrB_assign (candidates, ignore_node, NULL, (bool) true, GrB_ALL,n, GrB_DESC_C)) ;
-
+    if(ignore_node == NULL){
+        GRB_TRY (GrB_assign (candidates, NULL, NULL,(bool) true, GrB_ALL,n, NULL)) ;
+        GRB_TRY (GrB_assign (Seed, NULL, NULL, 1, GrB_ALL, n, NULL));
+    }else{
+        GRB_TRY (GrB_assign (candidates, ignore_node, NULL,(bool) true, GrB_ALL,n, GrB_DESC_C)) ;
+        GRB_TRY (GrB_assign (Seed, candidates, NULL, 1, GrB_ALL, n, GrB_DESC_S));
+        
+    }
+    dbg(candidates);
     GRB_TRY (LAGraph_Random_Seed (Seed, seed, msg)) ;
+    dbg(Seed);
 
     GRB_TRY (GrB_Vector_nvals (&ncandidates, candidates)) ;
 
-    
     GRB_TRY (GrB_assign (score, NULL, NULL, Seed, GrB_ALL, n, NULL)) ;
     GRB_TRY (GrB_eWiseMult (score, NULL, NULL, GrB_DIV_FP32, score, degree,NULL)) ;
     dbg(score);
 
     dbg(candidates);
-    GRB_TRY (GrB_vxm (scoreA, candidates, NULL,GrB_MAX_FIRST_SEMIRING_FP32, score, A, GrB_DESC_RS)) ;
+    GRB_TRY (GrB_vxm (scoreA, candidates, NULL,
+        GrB_MAX_FIRST_SEMIRING_FP32, score, A, GrB_DESC_RS)) ;
     dbg(scoreA);
     GRB_TRY (GrB_vxm (neighbor_max, candidates, NULL,GrB_MAX_FIRST_SEMIRING_FP32, scoreA, A, GrB_DESC_RS)) ;
     dbg(neighbor_max);
@@ -105,11 +117,70 @@ int LAGraph_IsolateSets(
     dbg(new_members);
     GRB_TRY (GrB_assign (iset, new_members, NULL,true,GrB_ALL,n,NULL)) ;
     (*isolate_set) = iset;
+
     // printf("done iset");
     iset = NULL;
+    dbg(*isolate_set);
     LG_FREE_ALL;
 #else
     LG_ASSERT(false, GrB_NOT_IMPLEMENTED);
 #endif
     return 0;
+}
+
+// #undef LG_FREE_WORK                        
+#undef LG_FREE_ALL   
+#define LG_FREE_ALL
+
+int LAGraph_IsolateSets(
+    GrB_Matrix *IsolateSets, // Output: k x n Boolean matrix
+    LAGraph_Graph G,         // Input: graph
+    // GrB_Vector ignore_nodes,
+    uint64_t seed,           // Input: RNG seed
+    char* msg                // Error message buffer
+) {
+#if LG_SUITESPARSE_GRAPHBLAS_V10
+    LG_CLEAR_MSG;
+    LG_TRY(LAGraph_CheckGraph(G, msg));
+    LG_ASSERT(IsolateSets != NULL, GrB_NULL_POINTER);
+
+    GrB_Matrix A = G->A;
+    GrB_Index n;
+    GrB_Vector ignore_nodes = NULL;
+
+
+    GRB_TRY(GrB_Matrix_nrows(&n, A));
+    GRB_TRY(GrB_Vector_new(&ignore_nodes,GrB_BOOL,n));
+    GRB_TRY(GrB_assign(ignore_nodes,NULL,NULL,(bool) false,GrB_ALL,n,NULL));
+
+    GrB_Index max_k = n; // Max possible number of isolate sets is <= n
+    GrB_Matrix result = NULL;
+    GRB_TRY(GrB_Matrix_new(&result, GrB_BOOL, max_k, n));
+
+    GrB_Vector iset = NULL;
+    GRB_TRY(GrB_Vector_new(&iset,GrB_BOOL,n));
+    GrB_Index k = 0;
+    GrB_Index vals_res = 0;
+    // dbg(ignore_nodes);
+    while(true){
+        GRB_TRY(LAGraph_IsolateSet(&iset,G,ignore_nodes,seed,msg));
+        dbg(iset);
+        GRB_TRY(GrB_Vector_eWiseAdd_BinaryOp(ignore_nodes, NULL, NULL, GrB_LOR, ignore_nodes, iset, NULL));
+        dbg(ignore_nodes);
+        GRB_TRY(GrB_Vector_nvals(&vals_res,iset));
+        if(vals_res == 0) break;
+
+        GRB_TRY(GxB_Row_assign_Vector(result,NULL,NULL,iset,k,NULL,NULL));
+        dbg(result);
+        k++;
+        
+    }
+    GRB_TRY(GrB_Matrix_resize(result,k,n));
+    *IsolateSets = result;
+    GrB_free(&ignore_nodes);
+    return 0;
+#else
+    LG_ASSERT(false, GrB_NOT_IMPLEMENTED);
+    return 0;
+#endif
 }

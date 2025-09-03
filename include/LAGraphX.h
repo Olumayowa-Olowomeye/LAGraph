@@ -1463,12 +1463,23 @@ int LAGr_BreadthFirstSearch_Extended
     char *msg
 ) ;
 LAGRAPHX_PUBLIC
-int LAGraph_IsolateSets(
+int LAGraph_IsolateSet(
     //output
     GrB_Vector *isolate_set,
     //input
     LAGraph_Graph G,
     GrB_Vector ignore_node,
+    uint64_t seed,
+    char* msg
+
+);
+LAGRAPHX_PUBLIC
+int LAGraph_IsolateSets(
+    //output
+    GrB_Matrix *isolate_set,
+    //input
+    LAGraph_Graph G,
+    // GrB_Vector ignore_nodes,
     uint64_t seed,
     char* msg
 );
