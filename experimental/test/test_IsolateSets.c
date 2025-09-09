@@ -16,10 +16,10 @@ typedef struct
 } matrix_info;
 const matrix_info files[] = {
 
-    {"comm1.mtx"},
+    // {"comm1.mtx"},
     // {"comm0.mtx"},
     // {"res1.mtx"},
-    // {"karate.mtx"},
+    {"karate.mtx"},
     {""} 
 };
 
@@ -55,14 +55,14 @@ void test_IsolateSets(void){
             G->kind = LAGraph_ADJACENCY_UNDIRECTED ;
         }
         GrB_Matrix MIset;
-        GrB_Vector Iset;
+        // GrB_Vector Iset;
         GrB_Vector ignore_node=NULL;
 
         double tsimple = LAGraph_WallClockTime ( ) ;
         
-        OK(LAGraph_IsolateSet(&Iset,G,NULL,5123,msg));
-        GxB_print(Iset,5);
-        printf("Iset tested");
+        // OK(LAGraph_IsolateSet(&Iset,G,NULL,5123,msg));
+        // GxB_print(Iset,5);
+        // printf("Iset tested");
         OK(LAGraph_IsolateSets(&MIset,G,5123,msg));
         GxB_print(MIset,5);
         tsimple = LAGraph_WallClockTime ( ) - tsimple ;

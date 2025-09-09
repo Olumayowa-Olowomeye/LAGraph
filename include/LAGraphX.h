@@ -1467,7 +1467,7 @@ int LAGraph_IsolateSet(
     //output
     GrB_Vector *isolate_set,
     //input
-    LAGraph_Graph G,
+    GrB_Matrix A,
     GrB_Vector ignore_node,
     uint64_t seed,
     char* msg
@@ -1478,7 +1478,7 @@ int LAGraph_IsolateSets(
     //output
     GrB_Matrix *isolate_set,
     //input
-    LAGraph_Graph G,
+    GrB_Matrix A,
     // GrB_Vector ignore_nodes,
     uint64_t seed,
     char* msg

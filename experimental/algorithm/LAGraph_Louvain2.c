@@ -48,6 +48,8 @@
         GrB_free(&max_q1);      \
         GrB_free(&za);          \
         GrB_free(&z_dSTk);      \
+        GrB_free(&AS);               \
+        GrB_free(&StAS);             \ 
     }
 #define DEBUG 0
 #define dbg(x) \
@@ -86,13 +88,13 @@ void max_fp64(tuple_fp64 *z, const tuple_fp64 *x, const tuple_fp64 *y)
     {
         if (x->tb > y->tb)
         {
-            z->k = x->k;
-            z->v = x->v;
+            z->k = y->k;
+            z->v = y->v;
         }
         else
         {
-            z->k = y->k;
-            z->v = y->v;
+            z->k = x->k;
+            z->v = x->v;
         }
     }
     else
@@ -108,7 +110,7 @@ void max_fp64(tuple_fp64 *z, const tuple_fp64 *x, const tuple_fp64 *y)
     "       z->k = x->k;                                                     \n"             \
     "       z->v = x->v;                                                     \n"             \
     "   }else if(x->v == y->v){ \n"                                                          \
-    "         if(x->tb > y->tb){z->k = y->k;z->v = y->v;} else {z->k = x->k;z->v = x->v;}\n" \
+    "         if(x->tb > y->tb){z->k = x->k;z->v = x->v;} else {z->k = y->k;z->v = y->v;}\n" \
     "    }else{                                                               \n"            \
     "       z->k = y->k;                                                     \n"             \
     "       z->v = y->v;                                                     \n"             \
@@ -173,7 +175,8 @@ int LAGraph_Louvain2(
     GrB_Vector temp = NULL;
     GrB_Vector y_rand = NULL;
     GrB_Vector max_q1 = NULL;
-
+    GrB_Matrix AS = NULL;
+    GrB_Matrix StAS=NULL;
     GrB_Semiring IBop_MAX = NULL;
     GxB_IndexBinaryOp MAKEFP64_op = NULL;
     GrB_BinaryOp MAKEFP64_Bop = NULL, MAXFP64_op = NULL;
@@ -253,103 +256,114 @@ int LAGraph_Louvain2(
     GRB_TRY(GrB_Vector_new(&y_rand, GrB_UINT64, n));
     GRB_TRY(GrB_Vector_new(&sr, GrB_FP64, n));
     GRB_TRY(GrB_Vector_new(&srxq, GrB_FP64, n));
+    GRB_TRY(GrB_Matrix_new(&AS,GrB_FP64,n,n));
+    GRB_TRY(GrB_Matrix_new(&StAS,GrB_FP64,n,n));
     GRB_TRY(GrB_assign(y_rand, NULL, NULL, 1, GrB_ALL, n, NULL));
 
     bool changed = true;
     int max_iter = 20;
     int iter = 0;
-    uint64_t seed = 8314123;
+    int aggr_iter = 0;
+    uint64_t seed = 1224;
 
     // GxB_print(y_rand,5);
     GRB_TRY(GrB_mxv(z, NULL, NULL, stdmxm, S, k, NULL));
     // GxB_print(z,5);
-    while (changed && iter < max_iter)
+    while (aggr_iter < max_iter)
     {
-        changed = false;
-        for (int i = 0; i < n; i++)
-        { // extract tuples
-            // printf("%d",i);
+        while (changed && iter < max_iter)
+        {
+            changed = false;
+            for (int i = 0; i < n; i++)
+            { // extract tuples
+                // printf("%d",i);
 
-            // v = A(i,:)
-            GRB_TRY(GrB_Col_extract(v, NULL, NULL, A, GrB_ALL, b, i, GrB_DESC_T0));
-            // GxB_print(v,5);
+                // v = A(i,:)
+                GRB_TRY(GrB_Col_extract(v, NULL, NULL, A, GrB_ALL, b, i, GrB_DESC_T0));
+                // GxB_print(v,5);
 
-            // -- extract k_i
-            GRB_TRY(GrB_Vector_extractElement_FP64(&k_i, k, i));
-            // GxB_print(S,5);
+                // -- extract k_i
+                GRB_TRY(GrB_Vector_extractElement_FP64(&k_i, k, i));
+                // GxB_print(S,5);
 
-            // t_q =v any.pair S   O(|v|)
-            GRB_TRY(GrB_vxm(t_q, NULL, NULL, anypB, v, S, GrB_DESC_T0));
-            // GxB_print(t_q,5);
+                // t_q =v any.pair S   O(|v|)
+                GRB_TRY(GrB_vxm(t_q, NULL, NULL, anypB, v, S, GrB_DESC_T0));
+                // GxB_print(t_q,5);
 
-            // sr = S(i,:)
-            GRB_TRY(GrB_Col_extract(sr, NULL, NULL, S, GrB_ALL, 1, i, GrB_DESC_T0));
-            // GxB_print(sr,5);
+                // sr = S(i,:)
+                GRB_TRY(GrB_Col_extract(sr, NULL, NULL, S, GrB_ALL, 1, i, GrB_DESC_T0));
+                // GxB_print(sr,5);
 
-            // S(i,:) = 0/false
-            GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
-            GRB_TRY(GrB_Vector_setElement_BOOL(S_container->x, false, i));
-            GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
-            dbg(S);
+                // S(i,:) = 0/false
+                GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
+                GRB_TRY(GrB_Vector_setElement_BOOL(S_container->x, false, i));
+                GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
+                dbg(S);
 
-            ////////////////////////////////////////////////////////////
-            //-------------q1<t_q> = a(kTS)+vTS----------- -----------//
-            //-------------q1<t_q> = z+vTS----------------------------//
-            // double alpha_p = 1;
-            double alpha = -k_i / m;
+                ////////////////////////////////////////////////////////////
+                //-------------q1<t_q> = a(kTS)+vTS----------- -----------//
+                //-------------q1<t_q> = z+vTS----------------------------//
+                // double alpha_p = 1;
+                double alpha = -k_i / m;
 
-            GRB_TRY(GrB_Vector_apply_BinaryOp2nd_FP64(za, NULL, NULL, timesf64, z, alpha, GrB_DESC_T0));
-            dbg(za);
+                GRB_TRY(GrB_Vector_apply_BinaryOp2nd_FP64(za, NULL, NULL, timesf64, z, alpha, GrB_DESC_T0));
+                dbg(za);
 
-            GRB_TRY(GrB_eWiseAdd(za, NULL, NULL, plusf64, za, v, NULL));
-            // printf("z*alpha + v\n");
-            dbg(za);
-            GRB_TRY(GrB_vxm(q1, t_q, NULL, stdmxm, za, S, GrB_DESC_R));
-            dbg(q1);
-            ///////////////////////////////////////////////////////////
+                GRB_TRY(GrB_eWiseAdd(za, NULL, NULL, plusf64, za, v, NULL));
+                // printf("z*alpha + v\n");
+                dbg(za);
+                GRB_TRY(GrB_vxm(q1, t_q, NULL, stdmxm, za, S, GrB_DESC_R));
+                dbg(q1);
+                ///////////////////////////////////////////////////////////
 
-            ///////////////////////////////////////////////////////////
-            //-------------Index Binary OP Rand_argminmax -----------//
-            GRB_TRY(GrB_Vector_nvals(&q1_size, q1));
-            // GxB_print(q1,5);
-            // printf("Size of q1: %ld\n",q1_size);
-            // GRB_TRY(GrB_Vector_setElement_UINT64(y_rand,seed,0));
-            seed += i;
-            GRB_TRY(GrB_assign(y_rand, t_q, NULL, seed, GrB_ALL, n, GrB_DESC_S));
+                ///////////////////////////////////////////////////////////
+                //-------------Index Binary OP Rand_argminmax -----------//
+                GRB_TRY(GrB_Vector_nvals(&q1_size, q1));
+                // GxB_print(q1,5);
+                // printf("Size of q1: %ld\n",q1_size);
+                // GRB_TRY(GrB_Vector_setElement_UINT64(y_rand,seed,0));
+                seed += 3;
+                GRB_TRY(GrB_assign(y_rand, t_q, NULL, seed, GrB_ALL, n, GrB_DESC_S));
 
-            // GxB_print(q1,5);
-            GRB_TRY(GrB_mxv(max_q1, NULL, NULL, IBop_MAX, (GrB_Matrix)q1, y_rand, GrB_DESC_T0));
-            // GxB_print(q1,5);
+                // GxB_print(q1,5);
+                GRB_TRY(GrB_mxv(max_q1, NULL, NULL, IBop_MAX, (GrB_Matrix)q1, y_rand, GrB_DESC_T0));
+                // GxB_print(q1,5);
 
-            GRB_TRY(GrB_Vector_extractElement_UDT((void *)&o, max_q1, 0));
-            // printf("choice:%ld tb: %ld\n",(long)o.k, (long)o.tb);
-            // dbg(S);
+                GRB_TRY(GrB_Vector_extractElement_UDT((void *)&o, max_q1, 0));
+                // printf("choice:%ld tb: %ld\n",(long)o.k, (long)o.tb);
+                // dbg(S);
 
-            GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
-            GRB_TRY(GrB_Vector_setElement(S_container->i, o.k, i));
-            GRB_TRY(GrB_Vector_setElement_BOOL(S_container->x, true, i));
-            GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
-            // GxB_print(S,5);
+                GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
+                GRB_TRY(GrB_Vector_setElement(S_container->i, o.k, i));
+                GRB_TRY(GrB_Vector_setElement_BOOL(S_container->x, true, i));
+                GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
+                // GxB_print(S,5);
 
-            //////////////////////////////////////////////////////////
+                //////////////////////////////////////////////////////////
 
-            // GxB_print(sr,5);
-            GRB_TRY(GrB_Vector_eWiseMult_BinaryOp(srxq, NULL, NULL, timesf64, sr, q1, NULL));
-            GRB_TRY(GrB_Vector_nvals(&vals_srxq, srxq));
-            // GxB_print(srxq,5);
-            // printf("values changed: %ld\n",vals_srxq);
-            // printf("values%d",vals_srxq==0);
-            if (vals_srxq == 0)
-            {
-                changed = true;
+                // GxB_print(sr,5);
+                GRB_TRY(GrB_Vector_eWiseMult_BinaryOp(srxq, NULL, NULL, timesf64, sr, q1, NULL));
+                GRB_TRY(GrB_Vector_nvals(&vals_srxq, srxq));
+                // GxB_print(srxq,5);
+                // printf("values changed: %ld\n",vals_srxq);
+                // printf("values%d",vals_srxq==0);
+                if (vals_srxq == 0)
+                {
+                    changed = true;
+                }
+                // if(i==3)break;
             }
-            // if(i==3)break;
+            iter++;
+            // break;
+            // printf("changed: %i\n", changed);
         }
-        iter++;
-        // break;
-        // printf("changed: %i\n", changed);
+        GRB_TRY(GrB_mxm(AS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,A,S,NULL));
+        GRB_TRY(GrB_mxm(StAS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
+        dbg(StAS);
+        GRB_TRY(GrB_Matrix_dup(&A, StAS));
+        aggr_iter++;
     }
-    GxB_print(S,5);
+    GxB_print(S, 5);
     double Q;
     double gamma = 1;
     GRB_TRY(LAGr_Modularity2(&Q, gamma, A, S, msg));

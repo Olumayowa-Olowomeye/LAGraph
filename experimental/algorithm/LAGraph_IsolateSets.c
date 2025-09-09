@@ -17,7 +17,7 @@
     GrB_free(&Seed) ; \
     GrB_free(&degree) ; \
 }
-#define DEBUG 1
+#define DEBUG 0
 #define dbg(x) if (DEBUG) GxB_print(x,5)
 #define err(x, info)                                    \
     if (!(info == GrB_SUCCESS || info == GrB_NO_VALUE)) \
@@ -34,7 +34,7 @@ int LAGraph_IsolateSet(
     //output
     GrB_Vector *isolate_set,
     //input
-    LAGraph_Graph G,
+    GrB_Matrix A,
     GrB_Vector ignore_node,
     uint64_t seed,
     char* msg
@@ -56,12 +56,12 @@ int LAGraph_IsolateSet(
     GrB_Vector empty = NULL ;           // an empty vector
     GrB_Vector Seed = NULL ;            // random number seed vector
     GrB_Vector degree = NULL ;          // (float) G->out_degree
-    GrB_Matrix A ;                      // G->A, the adjacency matrix
+    // GrB_Matrix A ;                      // G->A, the adjacency matrix
     GrB_Index n ;                       // # of nodes
     // printf("in Isolate set algorithm");
-    LG_TRY (LAGraph_CheckGraph (G, msg)) ;
+    // LG_TRY (LAGraph_CheckGraph (G, msg)) ;
     LG_ASSERT(isolate_set != NULL, GrB_NULL_POINTER);
-    A = G->A;
+    // A = G->A;
     dbg(A);
 
     GRB_TRY (GrB_Matrix_nrows(&n,A));
@@ -80,7 +80,7 @@ int LAGraph_IsolateSet(
     //rand
     // seed = 6247;
     // printf("%ld",seed);
-     GRB_TRY(GrB_assign(degree,NULL,NULL,G->out_degree,GrB_ALL,n,NULL));
+    GRB_TRY(GrB_Matrix_reduce_Monoid(degree, NULL, NULL, GrB_PLUS_MONOID_FP64, A, NULL));
     dbg(degree);
 
     GrB_Index ncandidates ;
@@ -134,17 +134,18 @@ int LAGraph_IsolateSet(
 
 int LAGraph_IsolateSets(
     GrB_Matrix *IsolateSets, // Output: k x n Boolean matrix
-    LAGraph_Graph G,         // Input: graph
+    // LAGraph_Graph G,         // Input: graph
+    GrB_Matrix A,
     // GrB_Vector ignore_nodes,
     uint64_t seed,           // Input: RNG seed
     char* msg                // Error message buffer
 ) {
 #if LG_SUITESPARSE_GRAPHBLAS_V10
     LG_CLEAR_MSG;
-    LG_TRY(LAGraph_CheckGraph(G, msg));
+    // LG_TRY(LAGraph_CheckGraph(G, msg));
     LG_ASSERT(IsolateSets != NULL, GrB_NULL_POINTER);
 
-    GrB_Matrix A = G->A;
+    // GrB_Matrix A = G->A;
     GrB_Index n;
     GrB_Vector ignore_nodes = NULL;
 
@@ -163,7 +164,7 @@ int LAGraph_IsolateSets(
     GrB_Index vals_res = 0;
     // dbg(ignore_nodes);
     while(true){
-        GRB_TRY(LAGraph_IsolateSet(&iset,G,ignore_nodes,seed,msg));
+        GRB_TRY(LAGraph_IsolateSet(&iset,A,ignore_nodes,seed,msg));
         dbg(iset);
         GRB_TRY(GrB_Vector_eWiseAdd_BinaryOp(ignore_nodes, NULL, NULL, GrB_LOR, ignore_nodes, iset, NULL));
         dbg(ignore_nodes);
