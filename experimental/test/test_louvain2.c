@@ -58,6 +58,7 @@ void test_Louvain(void){
         GrB_Matrix S;
         double tsimple = LAGraph_WallClockTime ( ) ;
         OK(LAGraph_Louvain2(&S,G,msg));
+        OK(LAGraph_Louvain2_res(&S,G,.4,msg));
         // GxB_print(S);
         tsimple = LAGraph_WallClockTime ( ) - tsimple ;
         printf(" time: %f\n",tsimple);

@@ -1506,6 +1506,17 @@ int LAGraph_Louvain
     char* msg
 );
 
+LAGRAPHX_PUBLIC
+int LAGraph_Louvain_res
+(
+    //ouptut
+    GrB_Matrix S,
+    // input
+    LAGraph_Graph G,
+    float res,
+    char* msg
+);
+
 
 LAGRAPHX_PUBLIC
 int LAGraph_Louvain2
@@ -1514,6 +1525,17 @@ int LAGraph_Louvain2
     GrB_Matrix *S_result,
     // input
     LAGraph_Graph G,
+    char* msg
+);
+
+LAGRAPHX_PUBLIC
+int LAGraph_Louvain2_res
+(
+    //ouptut
+    GrB_Matrix *S_result,
+    // input
+    LAGraph_Graph G,
+    float res,
     char* msg
 );
 
@@ -1548,6 +1570,16 @@ int LAGraph_LouvainMIS(
     GrB_Matrix *S_result,
     //input 
     LAGraph_Graph G,
+    char* msg
+);
+
+LAGRAPHX_PUBLIC
+int LAGraph_LouvainMIS_res(
+    //output
+    GrB_Matrix *S_result,
+    //input 
+    LAGraph_Graph G,
+    float res,
     char* msg
 );
 

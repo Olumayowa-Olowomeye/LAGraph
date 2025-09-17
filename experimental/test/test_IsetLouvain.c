@@ -20,8 +20,9 @@ const matrix_info files[] = {
 
     // {"comm0.mtx", 0.357142857142857},
     // {"res1.mtx", 0.0},
-    {"karate2.mtx", .42},
-    // {"50node.mtx", .42},
+
+    {"karate_verysparse.mtx", .42},
+    {"50node.mtx", .42},
     {"",-1}  
 };
 void test_Louvain(void){
@@ -58,6 +59,8 @@ void test_Louvain(void){
         GrB_Matrix S;
         double tsimple = LAGraph_WallClockTime ( ) ;
         OK(LAGraph_LouvainMIS(&S,G,msg));
+        // OK(LAGraph_LouvainMIS_res(&S,G,.4,msg));
+
         tsimple = LAGraph_WallClockTime ( ) - tsimple ;
         printf(" time: %f\n",tsimple);
 

@@ -395,22 +395,231 @@ int LAGraph_LouvainMIS(
         }
         GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
         GRB_TRY(LAGraph_Vector_IsEqual(&changed,Si_old,S_container->i,msg));
-        GRB_TRY(GrB_Vector_dup(&Si_old,S_container->i));
+        GRB_TRY(GrB_Matrix_dup(&Si_old,S_container->i));
         GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
         GRB_TRY(GrB_mxm(AS, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, A, S, NULL));
-        GRB_TRY(GrB_mxm(StAS, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, S, AS, GrB_DESC_T0));
-        dbg(StAS);
-        // dbg(A);
-        GrB_free(&A);
-        GRB_TRY(GrB_Matrix_dup(&A, StAS));
+        GRB_TRY(GrB_mxm(A, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, S, AS, GrB_DESC_T0));
+        // dbg(StAS);
+        // // dbg(A);
+        // GrB_free(&A);
+        // GRB_TRY(GrB_Matrix_dup(&A, StAS));
         iter++;
     }
-    GxB_print(S,5);
-    double Q;
-    double gamma = 1;
-    GRB_TRY(LAGr_Modularity2(&Q, gamma, A, S, msg));
+    // GxB_print(S,3);
+    // double Q;
+    // double gamma = 1;
+    // GRB_TRY(LAGr_Modularity2(&Q, gamma, A, S, msg));
     printf("Iterations: %d\n", iter);
-    printf("Q:%.15g\n", Q);
+    // printf("Q:%.15g\n", Q);
+    LG_FREE_ALL;
+#else
+    LG_ASSERT(false, GrB_NOT_IMPLEMENTED);
+#endif
+    return 0;
+}
+
+
+
+int LAGraph_LouvainMIS_res(
+    // output
+    GrB_Matrix *S_result,
+    // input
+    LAGraph_Graph G,
+    float res,
+    char *msg)
+{
+#if LG_SUITESPARSE_GRAPHBLAS_V10
+    char MATRIX_TYPE[LAGRAPH_MSG_LEN];
+    char *err;
+    // if (DEBUG)
+    GrB_set(GrB_GLOBAL, DEBUG, GxB_BURBLE);
+    // Shortened monoids, Binary ops, and Semirings
+    GrB_Monoid plusmon = GrB_PLUS_MONOID_FP64;
+    GrB_Monoid timesmon = GrB_TIMES_MONOID_FP64;
+    GrB_BinaryOp plusf64 = GrB_PLUS_FP64;
+    GrB_BinaryOp timesf64 = GrB_TIMES_FP64;
+    GrB_BinaryOp divf64 = GrB_DIV_FP64;
+    GrB_Semiring stdmxm = GrB_PLUS_TIMES_SEMIRING_FP64;
+    GrB_BinaryOp UDT_AM;
+
+    // Declarations
+    GrB_Descriptor rilist = NULL;
+    GrB_Descriptor rvlist = NULL;
+    GrB_Vector iset = NULL;
+    GrB_Vector k = NULL;
+    GrB_Vector x = NULL;
+    GrB_Vector y = NULL;
+    GrB_Vector neighbours = NULL;
+    GrB_Matrix S = NULL;
+    GxB_Container S_container = NULL;
+    GrB_Matrix A = NULL;
+    GrB_Matrix AS = NULL;
+    GrB_Matrix StAS = NULL;
+    GrB_Matrix A_iset = NULL;
+    GrB_Index n;
+    GrB_Matrix W = NULL;
+    GrB_Vector Wy = NULL;
+    GrB_Scalar argmax_0;
+    GrB_Type Tuple = NULL;
+    GxB_IndexBinaryOp MAKEAMTUP_op = NULL;
+    GrB_BinaryOp MAKEAMTUP_Bop = NULL, AM_Bop = NULL;
+    GrB_Monoid AM_mon = NULL;
+    GrB_Semiring AM_Semiring = NULL;
+    GrB_Vector k_values = NULL;
+    GrB_Vector Si_old = NULL;
+    // Initializing
+    LG_TRY(LAGraph_CheckGraph(G, msg));
+    LG_ASSERT(S_result != NULL, GrB_NULL_POINTER);
+    GrB_Info info;
+    A = G->A;
+    dbg(A);
+    uint64_t seed = 1231245;
+    // printf("here");
+    // -----------------------------Index Binary OP: AM--------------------------//
+
+    GRB_TRY(GxB_Type_new(&Tuple, sizeof(argmax_tup), "argmax_tup", AM_TUP));
+
+    // -------------------------------------------------------//
+
+    GRB_TRY(GrB_Matrix_nrows(&n, A));
+    GRB_TRY(GrB_Vector_new(&y, GrB_FP64, n));
+    GRB_TRY(GrB_Vector_new(&x, GrB_FP64, n));
+    GRB_TRY(GrB_Vector_new(&neighbours, GrB_FP64, n));
+    GRB_TRY(GrB_Vector_new(&k, GrB_FP64, n));
+    GRB_TRY(GrB_Matrix_new(&W, GrB_FP64, n, n));
+    GRB_TRY(GrB_Vector_new(&Wy, Tuple, n));
+    GRB_TRY(GrB_Matrix_new(&A_iset, GrB_FP64, n, n));
+    GRB_TRY(GxB_Container_new(&S_container));
+    GRB_TRY(GrB_Vector_new(&iset, GrB_FP64, n));
+    GRB_TRY(GrB_Matrix_new(&AS, GrB_FP64, n, n));
+    GRB_TRY(GrB_Matrix_new(&StAS, GrB_FP64, n, n));
+
+    GRB_TRY(GrB_Descriptor_new(&rilist));
+    GRB_TRY(GrB_set(rilist, GxB_USE_INDICES, GxB_ROWINDEX_LIST));
+    GRB_TRY(GrB_Descriptor_new(&rvlist));
+    GRB_TRY(GrB_set(rvlist, GxB_USE_VALUES, GxB_ROWINDEX_LIST));
+
+    double m;
+
+    GrB_Matrix iset_m = NULL;
+
+
+    GrB_Index niset;
+    GrB_Index ncols;
+    GrB_Matrix_ncols(&ncols, A);
+    GrB_Matrix A_rows;
+
+    GxB_Container k_container = NULL;
+    GRB_TRY(GxB_Container_new(&k_container));
+
+    void *f = NULL;
+    uint64_t f_size;
+    uint64_t f_nvals = 0, f_nheld = 0;
+    GrB_Type ftype = NULL;
+    int f_handling;
+
+    void *c = NULL;
+    uint64_t c_size;
+    uint64_t c_nvals = 0, c_nheld = 0;
+    GrB_Type ctype = NULL;
+    int c_handling;
+
+    GrB_UnaryOp extract_k_op;
+    GRB_TRY(GxB_UnaryOp_new(&extract_k_op, extract_k, GrB_INT64, Tuple, "extract_k", EXTRACT_K_SRC));
+
+    GrB_Type Theta_UDT = NULL;
+    GRB_TRY(GxB_Type_new(&Theta_UDT, sizeof(Theta), "Theta", THETA_DEFN));
+    GRB_TRY(GrB_Scalar_new(&argmax_0, Theta_UDT));
+    bool changed = false;
+
+    // S <- I
+    GRB_TRY(GrB_assign(x, NULL, NULL, 1.0, GrB_ALL, n, NULL));
+    dbg(x);
+    GRB_TRY(GrB_Matrix_diag(&S, x, 0));
+    GRB_TRY(GrB_set(S, GxB_SPARSE, GxB_SPARSITY_CONTROL));
+    dbg(S);
+    GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
+    GRB_TRY(GrB_Vector_dup(&Si_old,S_container->i));
+    GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
+    dbg(S);
+    // return 0;
+    int iter = 0;
+    
+    // while(!changed)
+    while(!changed){
+        // k = [+_j A(:,j)]
+        GRB_TRY(GrB_Matrix_reduce_Monoid(k, NULL, NULL, plusmon, A, NULL));
+        GRB_TRY(GrB_set(k, GxB_SPARSE, GxB_SPARSITY_CONTROL));
+        dbg(k);
+
+        GRB_TRY(GrB_Vector_reduce_FP64(&m, NULL, plusmon, k, NULL));
+        m *= 0.5;
+        // printf("Total edge weight (m): %f\n", m);
+
+        GRB_TRY(LAGraph_IsolateSets(&iset_m, A, seed, msg));
+        // GxB_print(iset_m, 5);
+        GrB_Index loop;
+        GRB_TRY(GrB_Matrix_nrows(&loop, iset_m));
+        for (int i = 0; i < loop; i++)
+        {
+            // printf("%u\n",loop);
+            GRB_TRY(GrB_Col_extract(iset, NULL, NULL, iset_m, GrB_ALL, n, i, GrB_DESC_T0));
+            dbg(iset);
+            GrB_Vector_nvals(&niset, iset);
+            GrB_Matrix_new(&A_rows, GrB_FP64, niset, ncols);
+            info = GxB_Matrix_extract_Vector(A_rows, NULL, NULL, A, iset, NULL, rilist);
+
+            // err(A_rows, info);
+            dbg(A_rows);
+            info = GxB_Matrix_assign_Vector(A_iset, NULL, NULL, A_rows, iset, NULL, rilist);
+
+            GrB_Matrix_free(&A_rows);
+            GRB_TRY(GrB_mxm(W, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, A_iset, S, NULL));
+            dbg(W);
+            // GRB_TRY(GrB_Vector_appl(k,NULL,NULL,timesmon,));
+            GRB_TRY(GrB_vxm(y, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, k, S, GrB_DESC_T0));
+            dbg(y);
+            dbg(k);
+            GRB_TRY(GxB_unload_Vector_into_Container(k, k_container, NULL));
+
+            GRB_TRY(GxB_Vector_unload(k_container->x, &f, &ftype, &f_nheld, &f_size, &f_handling, NULL));
+            GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
+            info = (GxB_Vector_unload(S_container->i, &c, &ctype, &c_nheld, &c_size, &c_handling, NULL));
+            seed += i;
+            GRB_TRY(build_argmax_operator(Theta_UDT, Tuple, f, c, m, seed, &MAKEAMTUP_Bop, &AM_Bop, &AM_mon, &AM_Semiring, &MAKEAMTUP_op, &argmax_0, msg));
+            GRB_TRY(GrB_mxv(Wy, NULL, NULL, AM_Semiring, W, y, NULL));
+            dbg(Wy);
+            GRB_TRY(GxB_Vector_load(k_container->x, &f, ftype, f_nheld, f_size, f_handling, NULL));
+            dbg(k_container->x);
+            GRB_TRY(GxB_load_Vector_from_Container(k, k_container, NULL));
+            dbg(k);
+            GRB_TRY(GxB_Vector_load(S_container->i, &c, ctype, c_nheld, c_size, c_handling, NULL));
+            // GxB_print(S_container->i, 5);
+            GrB_Vector_new(&k_values, GrB_INT64, n);
+            GRB_TRY(GrB_Vector_apply(k_values, NULL, NULL, extract_k_op, Wy, NULL));
+            GRB_TRY(GrB_assign(S_container->i, k_values, NULL, k_values, GrB_ALL, n, NULL));
+            // GxB_print(S_container->i, 5);
+            GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
+
+        }
+        GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
+        GRB_TRY(LAGraph_Vector_IsEqual(&changed,Si_old,S_container->i,msg));
+        GRB_TRY(GrB_Matrix_dup(&Si_old,S_container->i));
+        GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
+        GRB_TRY(GrB_mxm(AS, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, A, S, NULL));
+        GRB_TRY(GrB_mxm(A, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, S, AS, GrB_DESC_T0));
+        // dbg(StAS);
+        // // dbg(A);
+        // GrB_free(&A);
+        // GRB_TRY(GrB_Matrix_dup(&A, StAS));
+        iter++;
+    }
+    // GxB_print(S,3);
+    // double Q;
+    // double gamma = 1;
+    // GRB_TRY(LAGr_Modularity2(&Q, gamma, A, S, msg));
+    printf("Iterations: %d\n", iter);
+    // printf("Q:%.15g\n", Q);
     LG_FREE_ALL;
 #else
     LG_ASSERT(false, GrB_NOT_IMPLEMENTED);

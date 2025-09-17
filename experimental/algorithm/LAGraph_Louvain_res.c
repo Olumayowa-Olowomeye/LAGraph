@@ -45,16 +45,17 @@
 #define dbg(x) \
     if (DEBUG) \
     GxB_print(x, 5)
-double rd()
-{
-    uint64_t r53 = ((uint64_t)(rand()) << 21) ^ (rand() >> 2);
-    return (double)r53 / 9007199254740991.0; // 2^53 - 1
-};
-int LAGraph_Louvain(
+// double rd()
+// {
+//     uint64_t r53 = ((uint64_t)(rand()) << 21) ^ (rand() >> 2);
+//     return (double)r53 / 9007199254740991.0; // 2^53 - 1
+// };
+int LAGraph_Louvain_res(
     // output
     GrB_Matrix S,
     // input
     LAGraph_Graph G,
+    float res,
     char *msg)
 {
 #if LG_SUITESPARSE_GRAPHBLAS_V10
@@ -159,7 +160,7 @@ int LAGraph_Louvain(
                 GRB_TRY(GrB_Vector_setElement_BOOL(S_container->x, false, i));
                 GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
 
-                double alpha = -k_i / m;
+                double alpha = res *(-k_i / m );
 
                 // q <- k O(n)
                 GrB_free(&q);
@@ -254,3 +255,4 @@ int LAGraph_Louvain(
 #endif
     return 0;
 }
+
