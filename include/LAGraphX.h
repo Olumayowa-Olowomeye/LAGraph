@@ -1500,7 +1500,7 @@ LAGRAPHX_PUBLIC
 int LAGraph_Louvain
 (
     //ouptut
-    GrB_Matrix S,
+    GrB_Matrix *S,
     // input
     LAGraph_Graph G,
     char* msg
@@ -1510,7 +1510,7 @@ LAGRAPHX_PUBLIC
 int LAGraph_Louvain_res
 (
     //ouptut
-    GrB_Matrix S,
+    GrB_Matrix *S,
     // input
     LAGraph_Graph G,
     float res,

@@ -28,6 +28,7 @@
         GrB_free(&A);    \
         GrB_free(&k);    \
         GrB_free(&x);    \
+        GrB_free(&S);    \
         GrB_free(&v);    \
         GrB_free(&sr);   \
         GrB_free(&q);    \
@@ -41,7 +42,7 @@
         GrB_free(&AS);               \
         GrB_free(&StAS);             \ 
     }
-#define DEBUG 0
+#define DEBUG 1
 #define dbg(x) \
     if (DEBUG) \
     GxB_print(x, 5)
@@ -52,7 +53,7 @@
 // };
 int LAGraph_Louvain_res(
     // output
-    GrB_Matrix S,
+    GrB_Matrix *S_result,
     // input
     LAGraph_Graph G,
     float res,
@@ -81,11 +82,13 @@ int LAGraph_Louvain_res(
     bool *vals;
     GrB_Index *p_cs = NULL;
     double *p_vals;
-    GrB_Matrix AS;
-    GrB_Matrix StAS;
+    GrB_Matrix AS = NULL;
+    GrB_Matrix StAS = NULL;
+    GrB_Matrix S = NULL;
     GxB_Container S_container = NULL;
 
     GrB_Matrix A = G->A;
+    LG_ASSERT(S_result != NULL, GrB_NULL_POINTER);
     // GxB_print(A,5);
     GrB_Index n, b;
     GRB_TRY(GrB_Matrix_nrows(&n, A));
@@ -250,6 +253,13 @@ int LAGraph_Louvain_res(
     // printf("Q:%.15g\n", Q);
     // LG_FREE_ALL;
     // LG_Random_Finalize(msg);
+    printf("here0?");
+    (*S_result) = S;
+    printf("here?");
+    S = NULL;
+    printf("here2?");
+    LG_FREE_ALL;
+    printf("here3?");
 #else
     LG_ASSERT(false, GrB_NOT_IMPLEMENTED);
 #endif

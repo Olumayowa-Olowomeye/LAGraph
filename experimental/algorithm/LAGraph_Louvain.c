@@ -28,6 +28,7 @@
         GrB_free(&A);    \
         GrB_free(&k);    \
         GrB_free(&x);    \
+        GrB_free(&S);    \
         GrB_free(&v);    \
         GrB_free(&sr);   \
         GrB_free(&q);    \
@@ -36,8 +37,6 @@
         GrB_free(&p);    \
         GrB_free(&srxt); \
         GrB_free(&t_q);  \
-        LAGraph_Free ((void **) &p_cs, NULL) ;  \
-        LAGraph_Free ((void **) &p_vals, NULL) ;  \
         GrB_free(&AS);               \
         GrB_free(&StAS);             \ 
     }
@@ -52,7 +51,7 @@ double rd()
 };
 int LAGraph_Louvain(
     // output
-    GrB_Matrix S,
+    GrB_Matrix *S_result,
     // input
     LAGraph_Graph G,
     char *msg)
@@ -82,9 +81,12 @@ int LAGraph_Louvain(
     double *p_vals;
     GrB_Matrix AS;
     GrB_Matrix StAS;
+    GrB_Matrix S;
     GxB_Container S_container = NULL;
 
+
     GrB_Matrix A = G->A;
+    LG_ASSERT(S_result != NULL,GrB_NULL_POINTER);
     // GxB_print(A,5);
     GrB_Index n, b;
     GRB_TRY(GrB_Matrix_nrows(&n, A));
@@ -206,6 +208,8 @@ int LAGraph_Louvain(
                     GRB_TRY(GrB_Vector_select_FP64(t, NULL, NULL, GrB_VALUEEQ_FP64, p, max_p, NULL));
                     // GxB_print(t,5);
                     GRB_TRY(GrB_Vector_nvals(&nvals_t, t));
+                    LAGraph_Free(&p_cs,msg);
+                    LAGraph_Free(&p_vals,msg);
                 }
 
                 // GxB_print(t,5);
@@ -219,8 +223,8 @@ int LAGraph_Louvain(
                 GRB_TRY(GrB_Vector_setElement(S_container->i, coor[0], i));
                 GRB_TRY(GrB_Vector_setElement_BOOL(S_container->x, true, i));
                 GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
-                free(coor);
-                free(vals);
+                LAGraph_Free(&coor,msg);
+                LAGraph_Free(&vals,msg);
                 // GxB_print(S,5);
                 GRB_TRY(GrB_Vector_eWiseMult_BinaryOp(srxt, NULL, NULL, timesf64, sr, t, NULL));
                 GRB_TRY(GrB_Vector_nvals(&nvals_srxt, srxt));
@@ -249,6 +253,9 @@ int LAGraph_Louvain(
     // printf("Q:%.15g\n", Q);
     // LG_FREE_ALL;
     // LG_Random_Finalize(msg);
+    (*S_result) = S;
+    S = NULL;
+    LG_FREE_ALL;
 #else
     LG_ASSERT(false, GrB_NOT_IMPLEMENTED);
 #endif

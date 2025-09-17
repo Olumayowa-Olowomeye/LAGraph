@@ -18,10 +18,10 @@ typedef struct
 
 const matrix_info files[] = {
 
-    // {"comm0.mtx", 0.357142857142857},
-    // {"res1.mtx", 0.0},
+    {"comm0.mtx", 0.357142857142857},
+    {"res1.mtx", 0.0},
     {"karate2.mtx", .42},
-    // {"50node.mtx", .42},
+    {"50node.mtx", .42},
     {"",-1}  
 };
 //Store matrix by row
@@ -58,10 +58,8 @@ void test_Louvain(void){
         }
         GrB_Matrix S=NULL;
         double tsimple = LAGraph_WallClockTime ( ) ;
-        OK(LAGraph_Louvain(S,G,msg));
-        
-        S=NULL;
-        OK(LAGraph_Louvain_res(S,G,.3,msg));
+        OK(LAGraph_Louvain(&S,G,msg));
+        // OK(LAGraph_Louvain_res(&S,G,.3,msg));
         tsimple = LAGraph_WallClockTime ( ) - tsimple ;
         printf(" time: %f\n",tsimple);
 
