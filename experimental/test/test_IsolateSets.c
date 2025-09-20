@@ -16,10 +16,10 @@ typedef struct
 } matrix_info;
 const matrix_info files[] = {
 
-    // {"comm1.mtx"},
-    // {"comm0.mtx"},
-    // {"res1.mtx"},
+    {"comm0.mtx"},
+    {"res1.mtx"},
     {"karate.mtx"},
+    {"50node.mtx"},
     {""} 
 };
 
@@ -63,7 +63,7 @@ void test_IsolateSets(void){
         // OK(LAGraph_IsolateSet(&Iset,G,NULL,5123,msg));
         // GxB_print(Iset,5);
         // printf("Iset tested");
-        OK(LAGraph_IsolateSets(&MIset,G,5123,msg));
+        OK(LAGraph_IsolateSets(&MIset,G->A,1231245,msg));
         GxB_print(MIset,5);
         tsimple = LAGraph_WallClockTime ( ) - tsimple ;
         printf(" time: %f\n",tsimple);

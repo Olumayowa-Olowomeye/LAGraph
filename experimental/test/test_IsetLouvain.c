@@ -20,7 +20,7 @@ const matrix_info files[] = {
 
     {"comm0.mtx", 0.357142857142857},
     {"res1.mtx", 0.0},
-
+// 
     {"karate.mtx", .42},
     {"50node.mtx", .42},
     {"",-1}  
@@ -47,7 +47,7 @@ void test_Louvain(void){
             printf("This matrix is not symmetric. \n");
             // make the adjacency matrix symmetric
             OK (LAGraph_Cached_AT (G, msg)) ;
-            OK (GrB_eWiseAdd (G->A, NULL, NULL, GrB_LOR, G->A, G->AT, NULL)) ;
+            OK (GrB_eWiseAdd (G->A, NULL, NULL, GrB_PLUS_FP64, G->A, G->AT, NULL)) ;
             G->is_symmetric_structure = true ;
             // consider the graph as directed
             G->kind = LAGraph_ADJACENCY_DIRECTED ;
@@ -58,12 +58,15 @@ void test_Louvain(void){
         }
         GrB_Matrix S;
         double tsimple = LAGraph_WallClockTime ( ) ;
-        OK(LAGraph_LouvainMIS(&S,G,msg));
+        OK(LAGraph_LouvainIS(&S,G,msg));
         // OK(LAGraph_LouvainMIS_res(&S,G,.4,msg));
-
+        // GxB_print(S,5);
+        // GxB_print(G->A,5);
         tsimple = LAGraph_WallClockTime ( ) - tsimple ;
         printf(" time: %f\n",tsimple);
-
+        // double Q;
+        // GRB_TRY(LAGr_Modularity2(&Q,1, G->A, S, msg));
+        // printf("Q:%f\n", Q);
 
     }
 }

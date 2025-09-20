@@ -25,7 +25,6 @@
 #undef LG_FREE_ALL
 #define LG_FREE_ALL      \
     {                    \
-        GrB_free(&A);    \
         GrB_free(&k);    \
         GrB_free(&x);    \
         GrB_free(&S);    \
@@ -40,7 +39,7 @@
         GrB_free(&AS);               \
         GrB_free(&StAS);             \ 
     }
-#define DEBUG 0
+#define DEBUG 1
 #define dbg(x) \
     if (DEBUG) \
     GxB_print(x, 5)
@@ -240,9 +239,9 @@ int LAGraph_Louvain(
             iter++;
         }
         GRB_TRY(GrB_mxm(AS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,A,S,NULL));
-        GRB_TRY(GrB_mxm(StAS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
-        dbg(StAS);
-        GRB_TRY(GrB_Matrix_dup(&A, StAS));
+        GRB_TRY(GrB_mxm(A,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
+        // dbg(StAS);
+        // GRB_TRY(GrB_Matrix_dup(&A, StAS));
         iter1++;
     }
     // GxB_print(S,5);

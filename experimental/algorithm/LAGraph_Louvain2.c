@@ -141,11 +141,8 @@ int LAGraph_Louvain2(
     char *msg)
 {
 #if LG_SUITESPARSE_GRAPHBLAS_V10
-    LG_CLEAR_MSG;
-
     char MATRIX_TYPE[LAGRAPH_MSG_LEN];
-    if (DEBUG)
-        GrB_set(GrB_GLOBAL, false, GxB_BURBLE);
+    GrB_set(GrB_GLOBAL, false, GxB_BURBLE);
 
     // assignment of monoids, bops, and semis
     GrB_Monoid plusmon = GrB_PLUS_MONOID_FP64;
@@ -358,9 +355,9 @@ int LAGraph_Louvain2(
             // printf("changed: %i\n", changed);
         }
         GRB_TRY(GrB_mxm(AS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,A,S,NULL));
-        GRB_TRY(GrB_mxm(StAS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
-        dbg(StAS);
-        GRB_TRY(GrB_Matrix_dup(&A, StAS));
+        GRB_TRY(GrB_mxm(A,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
+        // dbg(StAS);
+        // GRB_TRY(GrB_Matrix_dup(&A, StAS));
         aggr_iter++;
     }
     // GxB_print(S, 5);
@@ -608,14 +605,12 @@ int LAGraph_Louvain2_res(
             // printf("changed: %i\n", changed);
         }
         GRB_TRY(GrB_mxm(AS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,A,S,NULL));
-        GRB_TRY(GrB_mxm(StAS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
-        dbg(StAS);
-        GRB_TRY(GrB_Matrix_dup(&A, StAS));
+        GRB_TRY(GrB_mxm(A,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
         aggr_iter++;
     }
     // GxB_print(S, 5);
     // double Q;
-    double gamma = 1;
+    // double gamma = 1;
     // GRB_TRY(LAGr_Modularity2(&Q, gamma, A, S, msg));
     printf("Iterations: %d\n", iter);
     // printf("Q:%.15g\n", Q);
