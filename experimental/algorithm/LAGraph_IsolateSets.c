@@ -165,7 +165,8 @@ int LAGraph_IsolateSets(
     // dbg(ignore_nodes);
     while(true){
         GRB_TRY(LAGraph_IsolateSet(&iset,A,ignore_nodes,seed,msg));
-        dbg(iset);
+        // dbg(iset);
+        // GxB_print(iset,5);
         GRB_TRY(GrB_Vector_eWiseAdd_BinaryOp(ignore_nodes, NULL, NULL, GrB_LOR, ignore_nodes, iset, NULL));
         dbg(ignore_nodes);
         GRB_TRY(GrB_Vector_nvals(&vals_res,iset));

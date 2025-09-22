@@ -48,7 +48,7 @@ int main(int argc,char** argv){
 
     double t1 = LAGraph_WallClockTime ( ) ;
     LAGRAPH_TRY (LAGraph_SetNumThreads (1, nthreads_max, msg)) ;
-    LAGRAPH_TRY (LAGraph_Louvain (S,G,msg)) ;
+    LAGRAPH_TRY (LAGraph_Louvain (&S,G,msg)) ;
     t1 = LAGraph_WallClockTime ( ) - t1 ;
     printf ("warmup: %10.4f sec\n", t1) ;
 

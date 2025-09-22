@@ -372,9 +372,11 @@ int LAGraph_LouvainIS(
         dbg(k);
         GRB_TRY(GrB_Vector_reduce_FP64(&m, NULL, GrB_PLUS_MONOID_FP64, k, NULL));
         m /= 2;
-        printf("Total edge weight (m): %f\n", m);
+        // printf("Total edge weight (m): %f\n", m);
 
         GRB_TRY(LAGraph_IsolateSets(&Miset, A, seed, msg));
+        // GxB_print(Miset,5);
+        // break;
         dbg(Miset);
         GrB_Index loop;
         GRB_TRY(GrB_Matrix_nrows(&loop, Miset));
@@ -426,18 +428,19 @@ int LAGraph_LouvainIS(
 
             GRB_TRY(GrB_assign(S_container->i, gain_mask, NULL, k_values, GrB_ALL, n, NULL));
             GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
-            GxB_print(S,5);
+            // GxB_print(S,5);
             // dbg(S);
             
         }
+        // break;
         GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
         GRB_TRY(LAGraph_Vector_IsEqual(&changed, Si_old, S_container->i, msg));
         changed = !changed;
-        printf("changed: %d\n", changed);
+        // printf("changed: %d\n", changed);
         GRB_TRY(GrB_Matrix_dup(&Si_old, S_container->i));
         GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
-        GxB_print(A,5);
-        GxB_print(S,5);
+        // GxB_print(A,5);
+        // GxB_print(S,5);
         GrB_Matrix_clear(AS);
         GrB_Matrix_clear(StAS);
         GRB_TRY(GrB_mxm(AS, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, A, S, NULL));
