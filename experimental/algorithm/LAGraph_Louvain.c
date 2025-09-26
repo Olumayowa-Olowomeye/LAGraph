@@ -46,7 +46,9 @@
 double rd()
 {
     uint64_t r53 = ((uint64_t)(rand()) << 21) ^ (rand() >> 2);
-    return (double)r53 / 9007199254740991.0; // 2^53 - 1
+    r53 ^= r53 << 34;
+
+    return r53 ; // 2^53 - 1
 };
 int LAGraph_Louvain(
     // output
@@ -131,7 +133,7 @@ int LAGraph_Louvain(
     bool changed = true;
     int max_iter = 20;
     int iter = 0;
-    int iter1 = 19;
+    int iter1 = 0;
     while(iter1 < max_iter){
         while (changed && iter < max_iter)
         {
@@ -211,9 +213,6 @@ int LAGraph_Louvain(
                     LAGraph_Free(&p_vals,msg);
                 }
 
-                // GxB_print(t,5);
-
-                // S(i:)=t
                 GRB_TRY(LAGraph_Malloc((void **)&coor, nvals_t, sizeof(GrB_Index), msg));
                 GRB_TRY(LAGraph_Malloc((void **)&vals, nvals_t, sizeof(bool), msg));
 
@@ -239,19 +238,16 @@ int LAGraph_Louvain(
             iter++;
         }
         GRB_TRY(GrB_mxm(AS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,A,S,NULL));
-        GRB_TRY(GrB_mxm(A,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
+        GRB_TRY(GrB_mxm(StAS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
         // dbg(StAS);
-        // GRB_TRY(GrB_Matrix_dup(&A, StAS));
+        GRB_TRY(GrB_Matrix_dup(&A, StAS));
         iter1++;
     }
-    // GxB_print(S,5);
     // double Q;
-    // double gamma = 1;
-    // GRB_TRY(LAGr_Modularity2(&Q, gamma, A, S, msg));
+    // GRB_TRY(LAGr_Modularity2(&Q,1, A, S, msg));
+    // printf("Q:%f\n", Q);
+
     printf("Iterations: %d\n", iter);
-    // printf("Q:%.15g\n", Q);
-    // LG_FREE_ALL;
-    // LG_Random_Finalize(msg);
     (*S_result) = S;
     S = NULL;
     LG_FREE_ALL;

@@ -110,7 +110,7 @@ void max_fp64(tuple_fp64 *z, const tuple_fp64 *x, const tuple_fp64 *y)
     "       z->k = x->k;                                                     \n"             \
     "       z->v = x->v;                                                     \n"             \
     "   }else if(x->v == y->v){ \n"                                                          \
-    "         if(x->tb > y->tb){z->k = x->k;z->v = x->v;} else {z->k = y->k;z->v = y->v;}\n" \
+    "         if(x->tb > y->tb){z->k = y->k;z->v = y->v;} else {z->k = x->k;z->v = x->v;}\n" \
     "    }else{                                                               \n"            \
     "       z->k = y->k;                                                     \n"             \
     "       z->v = y->v;                                                     \n"             \
@@ -138,6 +138,7 @@ int LAGraph_Louvain2(
     GrB_Matrix *S_result, // TODO: make this a vector
     // input
     LAGraph_Graph G,
+    uint64_t seed,
     char *msg)
 {
 #if LG_SUITESPARSE_GRAPHBLAS_V10
@@ -261,7 +262,7 @@ int LAGraph_Louvain2(
     int max_iter = 20;
     int iter = 0;
     int aggr_iter = 0;
-    uint64_t seed = 1224;
+    // uint64_t seed = 1212312224;
 
     // GxB_print(y_rand,5);
     GRB_TRY(GrB_mxv(z, NULL, NULL, stdmxm, S, k, NULL));
@@ -355,17 +356,12 @@ int LAGraph_Louvain2(
             // printf("changed: %i\n", changed);
         }
         GRB_TRY(GrB_mxm(AS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,A,S,NULL));
-        GRB_TRY(GrB_mxm(A,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
+        GRB_TRY(GrB_mxm(StAS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,AS,GrB_DESC_T0));
         // dbg(StAS);
-        // GRB_TRY(GrB_Matrix_dup(&A, StAS));
+        GRB_TRY(GrB_Matrix_dup(&A, StAS));
         aggr_iter++;
     }
-    // GxB_print(S, 5);
-    // double Q;
-    // double gamma = 1;
-    // GRB_TRY(LAGr_Modularity2(&Q, gamma, A, S, msg));
     printf("Iterations: %d\n", iter);
-    // printf("Q:%.15g\n", Q);
     (*S_result) = S;
     S = NULL;
     LG_FREE_ALL;

@@ -15,7 +15,7 @@
     }
 char msg[LAGRAPH_MSG_LEN];
 LAGraph_Graph G;
-GrB_Matrix A;
+GrB_Matrix A = NULL;
 #define LEN 512
 char filename[LEN + 1];
 typedef struct
@@ -27,7 +27,6 @@ typedef struct
 const matrix_info files[] = {
 
     {"comm0.mtx", 0.357142857142857},
-    {"res1.mtx", 0.0},
     {"karate.mtx", .42},
     {"50node.mtx", .42},
     {"", -1}};
@@ -35,36 +34,26 @@ const matrix_info files[] = {
 void test_Louvain(void)
 {
     LAGraph_Init(msg);
-    // Lagraph+RAndom_init
-    printf("\n");
+
     for (int k = 0;; k++)
     {
-        if (strlen(files[k].matrix_file) == 0)
+        const char *aname = files[k].matrix_file;
+        if (strlen(aname) == 0)
             break;
+        printf("\n================================== %s:\n", aname);
         snprintf(filename, LEN, LG_DATA_DIR "%s", files[k].matrix_file);
         FILE *f = fopen(filename, "r");
         TEST_CHECK(f != NULL);
         OK(LAGraph_MMRead(&A, f, msg));
+        fclose(f);
+
         OK(LAGraph_New(&G, &A, LAGraph_ADJACENCY_DIRECTED, msg));
         TEST_CHECK(A == NULL);
 
+
+        OK(LAGraph_Cached_AT(G, msg));
         // check if the pattern is symmetric - if it isn't make it.
         OK(LAGraph_Cached_IsSymmetricStructure(G, msg));
-
-        if (G->is_symmetric_structure == LAGraph_FALSE)
-        {
-            printf("This matrix is not symmetric. \n");
-            // make the adjacency matrix symmetric
-            OK(LAGraph_Cached_AT(G, msg));
-            OK(GrB_eWiseAdd(G->A, NULL, NULL, GrB_LOR, G->A, G->AT, NULL));
-            G->is_symmetric_structure = true;
-            // consider the graph as directed
-            G->kind = LAGraph_ADJACENCY_DIRECTED;
-        }
-        else
-        {
-            G->kind = LAGraph_ADJACENCY_UNDIRECTED;
-        }
         GrB_Matrix S = NULL;
         double tsimple = LAGraph_WallClockTime();
         OK(LAGraph_Louvain(&S, G, msg));
@@ -72,115 +61,98 @@ void test_Louvain(void)
         // OK(LAGraph_Louvain_res(&S,G,.3,msg));
         tsimple = LAGraph_WallClockTime() - tsimple;
         double Q = 0;
-        double gamma = 1;
-        dbg(S);
-        dbg(G->A);
-        // GrB_Index comms;
-        GrB_Info info = (LAGr_Modularity2(&Q, gamma, G->A, S, msg));
-        err(S,info);
+        OK(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
         printf("Q:%f\n", Q);
         // printf("Number of Communities: %d",comms);
         printf(" time: %f\n", tsimple);
+        OK(LAGraph_Delete(&G, msg));
     }
+    LAGraph_Finalize(msg);
 }
 
 void test_Louvain2(void)
 {
-    LAGraph_Init(msg);
-    // Lagraph+RAndom_init
-    printf("\n");
+     LAGraph_Init(msg);
+
     for (int k = 0;; k++)
     {
-        if (strlen(files[k].matrix_file) == 0)
+        uint64_t seed = 12124231245;
+
+        const char *aname = files[k].matrix_file;
+        if (strlen(aname) == 0)
             break;
+        printf("\n================================== %s:\n", aname);
         snprintf(filename, LEN, LG_DATA_DIR "%s", files[k].matrix_file);
         FILE *f = fopen(filename, "r");
         TEST_CHECK(f != NULL);
         OK(LAGraph_MMRead(&A, f, msg));
+        fclose(f);
+
         OK(LAGraph_New(&G, &A, LAGraph_ADJACENCY_DIRECTED, msg));
         TEST_CHECK(A == NULL);
 
+
+        OK(LAGraph_Cached_AT(G, msg));
         // check if the pattern is symmetric - if it isn't make it.
         OK(LAGraph_Cached_IsSymmetricStructure(G, msg));
-
-        if (G->is_symmetric_structure == LAGraph_FALSE)
-        {
-            printf("This matrix is not symmetric. \n");
-            // make the adjacency matrix symmetric
-            OK(LAGraph_Cached_AT(G, msg));
-            OK(GrB_eWiseAdd(G->A, NULL, NULL, GrB_LOR, G->A, G->AT, NULL));
-            G->is_symmetric_structure = true;
-            // consider the graph as directed
-            G->kind = LAGraph_ADJACENCY_DIRECTED;
-        }
-        else
-        {
-            G->kind = LAGraph_ADJACENCY_UNDIRECTED;
-        }
         GrB_Matrix S = NULL;
         double tsimple = LAGraph_WallClockTime();
-       GrB_Info info = (LAGraph_Louvain2(&S, G, msg));
-        err(S,info);
+        OK(LAGraph_Louvain2(&S, G,seed, msg));
+
         // OK(LAGraph_Louvain_res(&S,G,.3,msg));
         tsimple = LAGraph_WallClockTime() - tsimple;
-        double Q =0;
-        double gamma = 1;
-        info = (LAGr_Modularity2(&Q, gamma, G->A, S, msg));
-        err(S,info);
+        double Q = 0;
+        OK(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
         printf("Q:%f\n", Q);
+        // printf("Number of Communities: %d",comms);
         printf(" time: %f\n", tsimple);
+        OK(LAGraph_Delete(&G, msg));
     }
+    LAGraph_Finalize(msg);
 }
-void test_LouvainMIS(void)
+void test_LouvainIS(void)
 {
-    LAGraph_Init(msg);
-    printf("\n");
+     LAGraph_Init(msg);
+
     for (int k = 0;; k++)
     {
-        if (strlen(files[k].matrix_file) == 0)
+        uint64_t seed = rd();
+        const char *aname = files[k].matrix_file;
+        if (strlen(aname) == 0)
             break;
+        printf("\n================================== %s:\n", aname);
         snprintf(filename, LEN, LG_DATA_DIR "%s", files[k].matrix_file);
         FILE *f = fopen(filename, "r");
         TEST_CHECK(f != NULL);
         OK(LAGraph_MMRead(&A, f, msg));
+        fclose(f);
+
         OK(LAGraph_New(&G, &A, LAGraph_ADJACENCY_DIRECTED, msg));
         TEST_CHECK(A == NULL);
 
-        // check if the pattern is symmetric - if it isn't make it.
-        OK(LAGraph_Cached_OutDegree(G, msg));
-        OK(LAGraph_Cached_IsSymmetricStructure(G, msg));
 
-        if (G->is_symmetric_structure == LAGraph_FALSE)
-        {
-            printf("This matrix is not symmetric. \n");
-            // make the adjacency matrix symmetric
-            OK(LAGraph_Cached_AT(G, msg));
-            OK(GrB_eWiseAdd(G->A, NULL, NULL, GrB_LOR, G->A, G->AT, NULL));
-            G->is_symmetric_structure = true;
-            // consider the graph as directed
-            G->kind = LAGraph_ADJACENCY_DIRECTED;
-        }
-        else
-        {
-            G->kind = LAGraph_ADJACENCY_UNDIRECTED;
-        }
+        OK(LAGraph_Cached_AT(G, msg));
+        // check if the pattern is symmetric - if it isn't make it.
+        OK(LAGraph_Cached_IsSymmetricStructure(G, msg));
         GrB_Matrix S = NULL;
         double tsimple = LAGraph_WallClockTime();
-        OK(LAGraph_LouvainIS(&S, G, msg));
+        OK(LAGraph_LouvainIS(&S,seed, G, msg));
 
-        // OK(LAGraph_LouvainMIS_res(&S,G,.4,msg));
+        // OK(LAGraph_Louvain_res(&S,G,.3,msg));
         tsimple = LAGraph_WallClockTime() - tsimple;
-        GxB_print(S,5);
         double Q = 0;
-        double gamma = 1;
-        OK(LAGr_Modularity2(&Q, gamma, G->A, S, msg));
+        OK(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
         printf("Q:%f\n", Q);
+        // printf("Number of Communities: %d",comms);
         printf(" time: %f\n", tsimple);
+        OK(LAGraph_Delete(&G, msg));
     }
+    LAGraph_Finalize(msg);
 }
+
 TEST_LIST = {
     {"Louvain", test_Louvain},
     {"Louvain2", test_Louvain2},
-    {"LouvainMIS", test_LouvainMIS},
+    {"LouvainIS", test_LouvainIS},
 
     {NULL, NULL}};

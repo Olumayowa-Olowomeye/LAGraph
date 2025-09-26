@@ -49,7 +49,7 @@
         LG_FREE_MOD;                   \
     }
 
-#define DEBUG 0
+#define DEBUG 1
 
 int LAGr_Modularity2(
     //output
@@ -63,11 +63,12 @@ int LAGr_Modularity2(
     char* msg
 )
 {
+
     LG_CLEAR_MSG ;
 
     char MATRIX_TYPE[LAGRAPH_MSG_LEN];
-    if (DEBUG)
-        GrB_set (GrB_GLOBAL, true, GxB_BURBLE);
+
+    GrB_set (GrB_GLOBAL, false, GxB_BURBLE);
     //------------------------------------------------------------------------------
     // Declare Monoids, Brinary Operations, Semirings,(for easier reference) and Matrices
     //------------------------------------------------------------------------------
@@ -101,6 +102,7 @@ int LAGr_Modularity2(
     // Calculation of the adjacency Matrix B = A - kk_/2m
     //------------------------------------------------------------------------------
     double m;
+
     GRB_TRY(GrB_Matrix_reduce_FP64(&m,plusf64,plusmon,A,NULL));
     m/=2;
     // printf("m:%f\n",m);
@@ -133,7 +135,6 @@ int LAGr_Modularity2(
     GRB_TRY(GrB_select(Diag,NULL,NULL,GrB_DIAG,S_BS,0,NULL));
     // GxB_print(Diag,5);
     double Q_;
-    // printf("here");
     GRB_TRY(GrB_Matrix_reduce_FP64(&Q_,NULL,plusmon,Diag,NULL));
     Q_ *= -inv_m;
     *Q = Q_;

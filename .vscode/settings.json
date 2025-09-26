@@ -3,7 +3,8 @@
         "lg_internal.h": "c",
         "lagraphx.h": "c",
         "random": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "lagraph_demo.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

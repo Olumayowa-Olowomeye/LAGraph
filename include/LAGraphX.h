@@ -1525,6 +1525,7 @@ int LAGraph_Louvain2
     GrB_Matrix *S_result,
     // input
     LAGraph_Graph G,
+    uint64_t seed,
     char* msg
 );
 
@@ -1564,19 +1565,13 @@ int LAGr_MaxFlow(
     //inout
     char* msg
 );
-// LAGRAPHX_PUBLIC
-// int LAGraph_LouvainMIS(
-//     //output
-//     GrB_Matrix *S_result,
-//     //input 
-//     LAGraph_Graph G,
-//     char* msg
-// );
+
 
 LAGRAPHX_PUBLIC
 int LAGraph_LouvainIS(
     //output
     GrB_Matrix *S_result,
+    uint64_t seed,
     //input 
     LAGraph_Graph G,
     char* msg
