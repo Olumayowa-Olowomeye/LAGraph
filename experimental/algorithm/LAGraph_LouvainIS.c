@@ -365,7 +365,7 @@ int LAGraph_LouvainIS(
     int iter = 0;
     double Q = 0;
     double gamma = 1;
-    int max_iter = 3;
+    int max_iter = 10;
     
     GRB_TRY(LAGraph_IsolateSets(&Miset, A, seed, msg));
     while (changed && iter < max_iter)
@@ -449,7 +449,7 @@ int LAGraph_LouvainIS(
         // GrB_Matrix_clear(StAS);
         // GRB_TRY(GrB_mxm(AS, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, A, S, NULL));
         // GxB_print(AS,5);
-        // GRB_TRY(GrB_mxm(A, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, S, AS, GrB_DESC_T0));
+        // GRB_TRY(GrB_mxm(StAS, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, S, AS, GrB_DESC_T0));
         // GRB_TRY(GrB_Matrix_dup(&A, StAS));
         iter++;
     }
