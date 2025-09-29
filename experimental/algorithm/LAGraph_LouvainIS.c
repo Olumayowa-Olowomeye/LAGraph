@@ -365,7 +365,7 @@ int LAGraph_LouvainIS(
     int iter = 0;
     double Q = 0;
     double gamma = 1;
-    int max_iter = 4;
+    int max_iter = 6;
     
     GRB_TRY(LAGraph_IsolateSets(&Miset, A, seed, msg));
     while (changed && iter < max_iter)
