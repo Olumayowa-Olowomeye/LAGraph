@@ -256,7 +256,7 @@ void extract_score(void *out, const void *in)
         GrB_free(&MAKEAMTUP_op);             \
         GrB_free(&argmax_0);                 \
         GrB_free(&Theta_UDT);                \
-        GrB_free(&Tuple);                    \
+        GrB_Type_free(&Tuple);               \
         LAGraph_Free((void **)&d_copy, msg); \
         LAGraph_Free((void **)&c_copy, msg); \
     }
@@ -339,10 +339,10 @@ int LAGraph_LouvainIS(
     printf("n: %lu\n", n);
 
     GRB_TRY(GrB_Vector_new(&y, GrB_FP64, n));
-    GRB_TRY(GrB_Vector_new(&x, GrB_FP64, n));
+    GRB_TRY(GrB_Vector_new(&x, GrB_BOOL, n));
     GRB_TRY(GrB_Vector_new(&k, GrB_FP64, n));
     GRB_TRY(GrB_Vector_new(&Wy, Tuple, n));
-    GRB_TRY(GrB_Vector_new(&iset, GrB_FP64, n));
+    GRB_TRY(GrB_Vector_new(&iset, GrB_BOOL, n));
     GRB_TRY(GrB_Vector_new(&gain_values, GrB_FP64, n));
     GRB_TRY(GrB_Vector_new(&k_values, GrB_INT64, n));
     GRB_TRY(GrB_Vector_new(&gain_mask, GrB_BOOL, n));
@@ -375,9 +375,9 @@ int LAGraph_LouvainIS(
     bool changed = true;
 
     // S <- I
-    GRB_TRY(GrB_assign(x, NULL, NULL, 1.0, GrB_ALL, n, NULL));
-    dbg(x);
-    GRB_TRY(GrB_Matrix_diag(&S, x, 0));
+
+GRB_TRY(GrB_assign(x, NULL, NULL, true, GrB_ALL, n, NULL));
+GRB_TRY(GrB_Matrix_diag(&S, x, 0));
     GRB_TRY(GrB_set(S, GxB_SPARSE, GxB_SPARSITY_CONTROL));
     dbg(S);
     GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
@@ -408,7 +408,7 @@ int LAGraph_LouvainIS(
         // GRB_TRY(LAGraph_IsolateSets(&Miset, A, seed, msg));
         GrB_Index loop;
         GRB_TRY(GrB_Matrix_nrows(&loop, Miset));
-        for (int i = 0; i < loop ; i++)
+        for (int i = 0; i < loop; i++)
         {
             GRB_TRY(GrB_Col_extract(iset, NULL, NULL, Miset, GrB_ALL, n, i, GrB_DESC_T0));
             dbg(iset);

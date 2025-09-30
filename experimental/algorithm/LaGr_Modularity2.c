@@ -49,6 +49,13 @@
     {                                   \
         LG_FREE_MOD;                   \
     }
+#define err(x, info)                                    \
+    if (!(info == GrB_SUCCESS || info == GrB_NO_VALUE)) \
+    {                                                   \
+        char **err;                                     \
+        GrB_error(err, x);                              \
+        printf("\ninfo: %d error: %s\n", info, err);    \
+    }
 
 #define DEBUG 1
 int LAGr_Modularity2(
@@ -93,9 +100,11 @@ int LAGr_Modularity2(
         return 0;
     }
 
-    GRB_TRY(GrB_Matrix_reduce_Monoid ((GrB_Vector)k_,NULL,NULL,GrB_PLUS_MONOID_FP64,A, GrB_DESC_T0));
-    GRB_TRY(GrB_mxm(kk_,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,k,k_,GrB_DESC_T1));
-
+    GRB_TRY(GrB_Matrix_reduce_Monoid((GrB_Vector)k_, NULL, NULL, GrB_PLUS_MONOID_FP64, A, NULL));
+    // GxB_print(k,4);
+    // GxB_print(k_,4);
+    GRB_TRY(GrB_mxm(kk_,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,k,k,GrB_DESC_T1));
+    // GxB_print(kk_,4);
     double inv_m = -gamma / (2.0 * m);
     GRB_TRY(GrB_Matrix_apply_BinaryOp2nd_FP64(kk_,NULL,NULL,GrB_TIMES_FP64,kk_,inv_m,NULL));
     GRB_TRY(GrB_eWiseAdd(B,NULL,NULL,GrB_PLUS_FP64,A,kk_,NULL));
