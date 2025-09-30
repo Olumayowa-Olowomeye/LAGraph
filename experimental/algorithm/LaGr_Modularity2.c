@@ -37,7 +37,6 @@
 #define LG_FREE_MOD                     \
     {                                   \
         GrB_free (&k) ;                 \
-        GrB_free (&k_) ;                \
         GrB_free (&kk_) ;               \
         GrB_free(&B);                   \
         GrB_free (&BS) ;                \
@@ -73,7 +72,6 @@ int LAGr_Modularity2(
 
     GrB_Index n;
     GrB_Matrix k =    NULL;
-    GrB_Matrix k_ =   NULL;
     GrB_Matrix kk_ =  NULL;
     GrB_Matrix B =    NULL;
     GrB_Matrix BS =   NULL;
@@ -84,7 +82,6 @@ int LAGr_Modularity2(
 
     GRB_TRY(GrB_Matrix_new(&B, GrB_FP64, n, n));
     GRB_TRY(GrB_Matrix_new(&k, GrB_FP64, n,1));
-    GRB_TRY(GrB_Matrix_new(&k_, GrB_FP64, n,1));
     GRB_TRY(GrB_Matrix_new(&kk_, GrB_FP64, n,n));
     double m = 0.0;
     double Q_ = 0.0;
@@ -99,8 +96,6 @@ int LAGr_Modularity2(
         LG_FREE_ALL;
         return 0;
     }
-
-    GRB_TRY(GrB_Matrix_reduce_Monoid((GrB_Vector)k_, NULL, NULL, GrB_PLUS_MONOID_FP64, A, NULL));
     // GxB_print(k,4);
     // GxB_print(k_,4);
     GRB_TRY(GrB_mxm(kk_,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,k,k,GrB_DESC_T1));
