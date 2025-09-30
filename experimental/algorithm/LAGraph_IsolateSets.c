@@ -66,16 +66,16 @@ int LAGraph_IsolateSet(
 
     GRB_TRY (GrB_Matrix_nrows(&n,A));
     GRB_TRY (GrB_Vector_new(&iset,GrB_BOOL,n));
-    GRB_TRY (GrB_Vector_new (&neighbor_max, GrB_FP32, n)) ;
-    GRB_TRY (GrB_Vector_new (&degree, GrB_FP32, n)) ;
+    GRB_TRY (GrB_Vector_new (&neighbor_max, GrB_FP64, n)) ;
+   GRB_TRY (GrB_Vector_new (&degree, GrB_FP64, n)) ;
     GRB_TRY (GrB_Vector_new (&new_members, GrB_BOOL, n)) ;
     GRB_TRY (GrB_Vector_new (&new_neighbors, GrB_BOOL, n)) ;
     GRB_TRY (GrB_Vector_new(&new_membersA,GrB_BOOL,n));
     GRB_TRY (GrB_Vector_new (&candidates, GrB_BOOL, n)) ;
     GRB_TRY (GrB_Vector_new (&empty, GrB_BOOL, n)) ;
     GRB_TRY (GrB_Vector_new (&Seed, GrB_UINT64, n)) ;
-    GRB_TRY (GrB_Vector_new(&score,GrB_FP32, n));
-    GRB_TRY (GrB_Vector_new (&scoreA, GrB_FP32, n)) ;
+    GRB_TRY (GrB_Vector_new(&score,GrB_FP64, n));
+    GRB_TRY (GrB_Vector_new (&scoreA, GrB_FP64, n)) ;
 
     //rand
     // seed = 6247;
@@ -99,18 +99,18 @@ int LAGraph_IsolateSet(
     GRB_TRY (GrB_Vector_nvals (&ncandidates, candidates)) ;
 
     GRB_TRY (GrB_assign (score, NULL, NULL, Seed, GrB_ALL, n, NULL)) ;
-    GRB_TRY (GrB_eWiseMult (score, NULL, NULL, GrB_DIV_FP32, score, degree,NULL)) ;
+    GRB_TRY (GrB_eWiseMult (score, NULL, NULL, GrB_DIV_FP64, score, degree,NULL)) ;
     dbg(score);
 
     dbg(candidates);
     GRB_TRY (GrB_vxm (scoreA, candidates, NULL,
-        GrB_MAX_FIRST_SEMIRING_FP32, score, A, GrB_DESC_RS)) ;
+        GrB_MAX_FIRST_SEMIRING_FP64, score, A, GrB_DESC_RS)) ;
     dbg(scoreA);
-    GRB_TRY (GrB_vxm (neighbor_max, candidates, NULL,GrB_MAX_FIRST_SEMIRING_FP32, scoreA, A, GrB_DESC_RS)) ;
+    GRB_TRY (GrB_vxm (neighbor_max, candidates, NULL,GrB_MAX_FIRST_SEMIRING_FP64, scoreA, A, GrB_DESC_RS)) ;
     dbg(neighbor_max);
     dbg(score);
 
-    GRB_TRY (GrB_eWiseAdd (new_members, NULL, NULL, GrB_GE_FP32,score, neighbor_max, NULL)) ;
+    GRB_TRY (GrB_eWiseAdd (new_members, NULL, NULL, GrB_GE_FP64,score, neighbor_max, NULL)) ;
     dbg(new_members);
     GRB_TRY (GrB_select (new_members, NULL, NULL, GrB_VALUEEQ_BOOL,
         new_members, (bool) true, NULL)) ;
@@ -158,24 +158,34 @@ int LAGraph_IsolateSets(
     GrB_Matrix result = NULL;
     GRB_TRY(GrB_Matrix_new(&result, GrB_BOOL, max_k, n));
 
-    GrB_Vector iset = NULL;
-    GRB_TRY(GrB_Vector_new(&iset,GrB_BOOL,n));
+   GrB_Vector iset = NULL;              // start NULL -- LAGraph_IsolateSet will allocate
     GrB_Index k = 0;
     GrB_Index vals_res = 0;
-    // dbg(ignore_nodes);
-    while(true){
-        GRB_TRY(LAGraph_IsolateSet(&iset,A,ignore_nodes,seed,msg));
-        // dbg(iset);
-        // GxB_print(iset,5);
-        GRB_TRY(GrB_Vector_eWiseAdd_BinaryOp(ignore_nodes, NULL, NULL, GrB_LOR, ignore_nodes, iset, NULL));
-        dbg(ignore_nodes);
-        GRB_TRY(GrB_Vector_nvals(&vals_res,iset));
-        if(vals_res == 0) break;
 
-        GRB_TRY(GxB_Row_assign_Vector(result,NULL,NULL,iset,k,NULL,NULL));
-        dbg(result);
+    while (true)
+    {
+        // LAGraph_IsolateSet allocates a new vector and stores it into 'iset'
+        GRB_TRY(LAGraph_IsolateSet(&iset, A, ignore_nodes, seed, msg));
+
+        // if 'iset' is NULL or empty, break
+        GRB_TRY(GrB_Vector_nvals(&vals_res, iset));
+        if (vals_res == 0)
+        {
+            GrB_free(&iset); // free the empty iset returned
+            break;
+        }
+
+        // mark ignored nodes (update ignore_nodes) BEFORE copying into matrix if desired
+        GRB_TRY(GrB_Vector_eWiseAdd_BinaryOp(ignore_nodes, NULL, NULL, GrB_LOR, ignore_nodes, iset, NULL));
+
+        // copy the iset vector into the result matrix row k
+        GRB_TRY(GxB_Row_assign_Vector(result, NULL, NULL, iset, k, NULL, NULL));
+
+        // free the iset after copying into the matrix to avoid leaking
+        GrB_free(&iset);
+        iset = NULL;
+
         k++;
-        
     }
     GRB_TRY(GrB_Matrix_resize(result,k,n));
     *IsolateSets = result;

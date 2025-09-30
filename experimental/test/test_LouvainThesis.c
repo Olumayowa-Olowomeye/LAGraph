@@ -14,7 +14,7 @@
         printf("\ninfo: %d error: %s\n", info, err);    \
     }
 char msg[LAGRAPH_MSG_LEN];
-LAGraph_Graph G;
+LAGraph_Graph G = NULL;
 GrB_Matrix A = NULL;
 #define LEN 512
 char filename[LEN + 1];
@@ -60,7 +60,7 @@ void test_Louvain(void)
 
         // OK(LAGraph_Louvain_res(&S,G,.3,msg));
         tsimple = LAGraph_WallClockTime() - tsimple;
-        double Q = 0;
+        double Q = 0.0;
         OK(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
         printf("Q:%f\n", Q);
         // printf("Number of Communities: %d",comms);
@@ -76,7 +76,7 @@ void test_Louvain2(void)
 
     for (int k = 0;; k++)
     {
-        uint64_t seed = 12124231245;
+        uint64_t seed = 1224;
 
         const char *aname = files[k].matrix_file;
         if (strlen(aname) == 0)
@@ -101,7 +101,7 @@ void test_Louvain2(void)
 
         // OK(LAGraph_Louvain_res(&S,G,.3,msg));
         tsimple = LAGraph_WallClockTime() - tsimple;
-        double Q = 0;
+        double Q = 0.0;
         OK(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
         printf("Q:%f\n", Q);
         // printf("Number of Communities: %d",comms);
@@ -116,7 +116,7 @@ void test_LouvainIS(void)
 
     for (int k = 0;; k++)
     {
-        uint64_t seed = rd();
+        uint64_t seed = 1224;
         const char *aname = files[k].matrix_file;
         if (strlen(aname) == 0)
             break;
@@ -140,13 +140,17 @@ void test_LouvainIS(void)
 
         // OK(LAGraph_Louvain_res(&S,G,.3,msg));
         tsimple = LAGraph_WallClockTime() - tsimple;
-        double Q = 0;
+        double Q = 0.0; 
+
         OK(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
         printf("Q:%f\n", Q);
         // printf("Number of Communities: %d",comms);
         printf(" time: %f\n", tsimple);
+        GrB_free(&S);
         OK(LAGraph_Delete(&G, msg));
+
     }
+
     LAGraph_Finalize(msg);
 }
 

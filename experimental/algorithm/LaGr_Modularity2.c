@@ -39,6 +39,7 @@
         GrB_free (&k) ;                 \
         GrB_free (&k_) ;                \
         GrB_free (&kk_) ;               \
+        GrB_free(&B);                   \
         GrB_free (&BS) ;                \
         GrB_free (&S_BS) ;              \
         GrB_free (&Diag) ;              \
@@ -50,94 +51,68 @@
     }
 
 #define DEBUG 1
-
 int LAGr_Modularity2(
-    //output
-    double *Q, //modularity Q
-    // GrB_Matrix B,
-    //input
-    double gamma, //Optional resolution limit: default is 1
-    // LAGraph_Graph G, TODO
-    GrB_Matrix A, //adjacency matrix
-    GrB_Matrix S, //community matrix
+    double *Q,
+    double gamma,
+    GrB_Matrix A,
+    GrB_Matrix S,
     char* msg
 )
 {
-
     LG_CLEAR_MSG ;
-
     char MATRIX_TYPE[LAGRAPH_MSG_LEN];
 
     GrB_set (GrB_GLOBAL, false, GxB_BURBLE);
-    //------------------------------------------------------------------------------
-    // Declare Monoids, Brinary Operations, Semirings,(for easier reference) and Matrices
-    //------------------------------------------------------------------------------
-    GrB_Monoid plusmon = GrB_PLUS_MONOID_FP64;
-
-    GrB_BinaryOp plusf64 = GrB_PLUS_FP64;
-    GrB_BinaryOp timesf64 = GrB_TIMES_FP64;
-
-    GrB_Semiring stdmxm = GrB_PLUS_TIMES_SEMIRING_FP64;
 
     GrB_Index n;
-    GrB_Matrix k =    NULL; // vector where the ith value is the degree of vertex i
-    GrB_Matrix k_ =   NULL; // transpose of k vector
-    GrB_Matrix kk_ =  NULL; // Outer Product of k and transpose(k)
-    GrB_Matrix B =    NULL; // B = A - (kk^t/2m)
-    GrB_Matrix BS =   NULL; // BS
-    GrB_Matrix S_BS = NULL; // S_BS
+    GrB_Matrix k =    NULL;
+    GrB_Matrix k_ =   NULL;
+    GrB_Matrix kk_ =  NULL;
+    GrB_Matrix B =    NULL;
+    GrB_Matrix BS =   NULL;
+    GrB_Matrix S_BS = NULL;
     GrB_Matrix Diag = NULL;
 
     GRB_TRY(GrB_Matrix_nrows(&n, A));
-    // GRB_TRY(GrB_Matrix_new(&S_, GrB_FP64, n, n));
+
     GRB_TRY(GrB_Matrix_new(&B, GrB_FP64, n, n));
     GRB_TRY(GrB_Matrix_new(&k, GrB_FP64, n,1));
     GRB_TRY(GrB_Matrix_new(&k_, GrB_FP64, n,1));
     GRB_TRY(GrB_Matrix_new(&kk_, GrB_FP64, n,n));
+    double m = 0.0;
+    double Q_ = 0.0;
 
-    // GRB_TRY(GrB_transpose(S_,NULL,NULL,S,NULL));
-    GRB_TRY (GrB_Matrix_reduce_Monoid ((GrB_Vector)k, NULL, NULL,plusmon, A, NULL));
-    // GxB_print(k,3);
-    //------------------------------------------------------------------------------
-    // Calculation of the adjacency Matrix B = A - kk_/2m
-    //------------------------------------------------------------------------------
-    double m;
+    GRB_TRY(GrB_Matrix_reduce_Monoid ((GrB_Vector)k, NULL, NULL, GrB_PLUS_MONOID_FP64, A, NULL));
 
-    GRB_TRY(GrB_Matrix_reduce_FP64(&m,plusf64,plusmon,A,NULL));
-    m/=2;
-    // printf("m:%f\n",m);
-    // GxB_print(S,5);
-    // GxB_print(A,5);
-    GRB_TRY(GrB_Matrix_reduce_Monoid ((GrB_Vector)k_,NULL,NULL,plusmon,A, GrB_DESC_T0));
-    // GxB_print(k_,3);
-    GRB_TRY(GrB_mxm(kk_,NULL,NULL,stdmxm,k,k_,GrB_DESC_T1));
-    double inv_m = -gamma/(2*m); 
-    GRB_TRY(GrB_Matrix_apply_BinaryOp2nd_FP64(kk_,NULL,NULL,timesf64,kk_,inv_m,NULL));
-    GRB_TRY(GrB_eWiseAdd(B,NULL,NULL,plusf64,A,kk_,NULL));
-    // GxB_print (B,3); //DENSE
+    GRB_TRY(GrB_Matrix_reduce_FP64(&m, GrB_PLUS_FP64, GrB_PLUS_MONOID_FP64, A, NULL));
+    m /= 2.0;
+    if (m == 0.0)
+    {
+        *Q = 0.0;
+        LG_FREE_ALL;
+        return 0;
+    }
 
-    //------------------------------------------------------------------------------
-    // Calculation of S_BS
-    //------------------------------------------------------------------------------
+    GRB_TRY(GrB_Matrix_reduce_Monoid ((GrB_Vector)k_,NULL,NULL,GrB_PLUS_MONOID_FP64,A, GrB_DESC_T0));
+    GRB_TRY(GrB_mxm(kk_,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,k,k_,GrB_DESC_T1));
+
+    double inv_m = -gamma / (2.0 * m);
+    GRB_TRY(GrB_Matrix_apply_BinaryOp2nd_FP64(kk_,NULL,NULL,GrB_TIMES_FP64,kk_,inv_m,NULL));
+    GRB_TRY(GrB_eWiseAdd(B,NULL,NULL,GrB_PLUS_FP64,A,kk_,NULL));
+
     GRB_TRY(GrB_Matrix_new(&BS, GrB_FP64, n, n));
     GRB_TRY(GrB_Matrix_new(&S_BS, GrB_FP64, n, n));
-    // GxB_print(S,5);
-    GRB_TRY(GrB_mxm(BS, NULL, NULL, stdmxm, B, S, NULL));
-    // GxB_print(BS,5);
-    GRB_TRY(GrB_mxm(S_BS,NULL,NULL,stdmxm,S,BS,GrB_DESC_T0));  
-    // GxB_print (S_BS,3);
+    GRB_TRY(GrB_mxm(BS, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, B, S, NULL));
+    GRB_TRY(GrB_mxm(S_BS,NULL,NULL,GrB_PLUS_TIMES_SEMIRING_FP64,S,BS,GrB_DESC_T0));
 
-
-    //------------------------------------------------------------------------------
-    // Final Computation of Modularity Q
-    //------------------------------------------------------------------------------
     GRB_TRY(GrB_Matrix_new(&Diag,GrB_FP64,n,n));
     GRB_TRY(GrB_select(Diag,NULL,NULL,GrB_DIAG,S_BS,0,NULL));
-    // GxB_print(Diag,5);
-    double Q_;
-    GRB_TRY(GrB_Matrix_reduce_FP64(&Q_,NULL,plusmon,Diag,NULL));
+
+    GRB_TRY(GrB_Matrix_reduce_FP64(&Q_, NULL, GrB_PLUS_MONOID_FP64, Diag, NULL));
     Q_ *= -inv_m;
+
     *Q = Q_;
+
     LG_FREE_ALL;
     return 0;
 }
