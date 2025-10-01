@@ -371,19 +371,41 @@ int LAGraph_LouvainIS(
     uint64_t c_size, c_nvals = 0, c_nheld = 0;
     GrB_Type ctype = NULL;
     int c_handling;
-
-    bool changed = true;
-
+    
     // S <- I
 
-GRB_TRY(GrB_assign(x, NULL, NULL, true, GrB_ALL, n, NULL));
-GRB_TRY(GrB_Matrix_diag(&S, x, 0));
+    GRB_TRY(GrB_assign(x, NULL, NULL, true, GrB_ALL, n, NULL));
+    GRB_TRY(GrB_Matrix_diag(&S, x, 0));
     GRB_TRY(GrB_set(S, GxB_SPARSE, GxB_SPARSITY_CONTROL));
     dbg(S);
     GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
     GRB_TRY(GrB_Matrix_dup(&Si_old, S_container->i));
     dbg(Si_old);
     GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
+     GRB_TRY(GrB_Matrix_reduce_Monoid(k, NULL, NULL, GrB_PLUS_MONOID_FP64, A, NULL));
+    GRB_TRY(GrB_set(k, GxB_SPARSE, GxB_SPARSITY_CONTROL));
+    dbg(k);
+    GRB_TRY(GrB_Vector_reduce_FP64(&m, NULL, GrB_PLUS_MONOID_FP64, k, NULL));
+    m /= 2;
+    GRB_TRY(GxB_unload_Vector_into_Container(k, k_container, NULL));
+    GRB_TRY(GxB_Vector_unload(k_container->x, &f, &ftype, &f_nheld, &f_size, &f_handling, NULL));
+    GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
+    info = (GxB_Vector_unload(S_container->i, &c, &ctype, &c_nheld, &c_size, &c_handling, NULL));
+    // seed += 3;
+
+    GRB_TRY(build_argmax_operator(
+        Theta_UDT, Tuple, f, c, m, seed,
+        &MAKEAMTUP_Bop, &AM_Bop, &AM_mon, &AM_Semiring,
+        &MAKEAMTUP_op, &argmax_0, msg));
+    GRB_TRY(GxB_Vector_load(k_container->x, &f, ftype, f_nheld, f_size, f_handling, NULL));
+    dbg(k_container->x);
+    GRB_TRY(GxB_load_Vector_from_Container(k, k_container, NULL));
+    dbg(k);
+    GRB_TRY(GxB_Vector_load(S_container->i, &c, ctype, c_nheld, c_size, c_handling, NULL));
+    GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
+    dbg(S);
+    bool changed = true;
+
 
     int iter = 0;
     double Q = 0;
@@ -395,11 +417,6 @@ GRB_TRY(GrB_Matrix_diag(&S, x, 0));
     {
         changed = false;
         // k = +[A(:,j)]
-        GRB_TRY(GrB_Matrix_reduce_Monoid(k, NULL, NULL, GrB_PLUS_MONOID_FP64, A, NULL));
-        GRB_TRY(GrB_set(k, GxB_SPARSE, GxB_SPARSITY_CONTROL));
-        dbg(k);
-        GRB_TRY(GrB_Vector_reduce_FP64(&m, NULL, GrB_PLUS_MONOID_FP64, k, NULL));
-        m /= 2;
         // printf("Total edge weight (m): %f\n", m);
         // GxB_print(Miset,5);
         // break;
@@ -426,35 +443,35 @@ GRB_TRY(GrB_Matrix_diag(&S, x, 0));
             dbg(W);
             GRB_TRY(GrB_vxm(y, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, k, S, GrB_DESC_T0));
             dbg(y);
-            GRB_TRY(GxB_unload_Vector_into_Container(k, k_container, NULL));
+            // GRB_TRY(GxB_unload_Vector_into_Container(k, k_container, NULL));
 
-            GRB_TRY(GxB_Vector_unload(k_container->x, &f, &ftype, &f_nheld, &f_size, &f_handling, NULL));
-            GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
-            info = (GxB_Vector_unload(S_container->i, &c, &ctype, &c_nheld, &c_size, &c_handling, NULL));
-            seed += 3;
+            // GRB_TRY(GxB_Vector_unload(k_container->x, &f, &ftype, &f_nheld, &f_size, &f_handling, NULL));
+            // GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
+            // info = (GxB_Vector_unload(S_container->i, &c, &ctype, &c_nheld, &c_size, &c_handling, NULL));
+            // seed += 3;
 
-            LAGraph_Malloc((void **)&d_copy, f_nheld, sizeof(double), msg);
+            // LAGraph_Malloc((void **)&d_copy, f_nheld, sizeof(double), msg);
 
-            LG_ASSERT(d_copy != NULL, GrB_OUT_OF_MEMORY);
-            memcpy(d_copy, f, f_nheld * sizeof(double));
+            // LG_ASSERT(d_copy != NULL, GrB_OUT_OF_MEMORY);
+            // memcpy(d_copy, f, f_nheld * sizeof(double));
 
-            LAGraph_Malloc((void **)&c_copy, c_nheld, sizeof(uint32_t), msg);
-            LG_ASSERT(c_copy != NULL, GrB_OUT_OF_MEMORY);
-            memcpy(c_copy, c, c_nheld * sizeof(uint32_t));
+            // LAGraph_Malloc((void **)&c_copy, c_nheld, sizeof(uint32_t), msg);
+            // LG_ASSERT(c_copy != NULL, GrB_OUT_OF_MEMORY);
+            // memcpy(c_copy, c, c_nheld * sizeof(uint32_t));
 
-            GRB_TRY(build_argmax_operator(
-                Theta_UDT, Tuple, d_copy, c_copy, m, seed,
-                &MAKEAMTUP_Bop, &AM_Bop, &AM_mon, &AM_Semiring,
-                &MAKEAMTUP_op, &argmax_0, msg));
+            // GRB_TRY(build_argmax_operator(
+            //     Theta_UDT, Tuple, d_copy, c_copy, m, seed,
+            //     &MAKEAMTUP_Bop, &AM_Bop, &AM_mon, &AM_Semiring,
+            //     &MAKEAMTUP_op, &argmax_0, msg));
 
             GRB_TRY(GrB_mxv(Wy, NULL, NULL, AM_Semiring, W, y, NULL));
             // printf("\n");
             dbg(Wy);
-            GRB_TRY(GxB_Vector_load(k_container->x, &f, ftype, f_nheld, f_size, f_handling, NULL));
-            dbg(k_container->x);
-            GRB_TRY(GxB_load_Vector_from_Container(k, k_container, NULL));
-            dbg(k);
-            GRB_TRY(GxB_Vector_load(S_container->i, &c, ctype, c_nheld, c_size, c_handling, NULL));
+            // GRB_TRY(GxB_Vector_load(k_container->x, &f, ftype, f_nheld, f_size, f_handling, NULL));
+            // dbg(k_container->x);
+            // GRB_TRY(GxB_load_Vector_from_Container(k, k_container, NULL));
+            // dbg(k);
+            // GRB_TRY(GxB_Vector_load(S_container->i, &c, ctype, c_nheld, c_size, c_handling, NULL));
 
             GRB_TRY(GrB_Vector_apply(k_values, NULL, NULL, extract_k_op, Wy, NULL));
             dbg(k_values);
@@ -464,6 +481,7 @@ GRB_TRY(GrB_Matrix_diag(&S, x, 0));
 
             GRB_TRY(GrB_apply(gain_mask, NULL, NULL, GrB_GT_FP64, gain_values, 0.0, NULL));
             dbg(gain_mask);
+            GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
 
             GRB_TRY(GrB_assign(S_container->i, gain_mask, NULL, k_values, GrB_ALL, n, NULL));
             GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
@@ -472,30 +490,29 @@ GRB_TRY(GrB_Matrix_diag(&S, x, 0));
             GRB_TRY(GrB_Vector_clear(Wy));
             GRB_TRY(GrB_Vector_clear(k_values));
             GRB_TRY(GrB_Vector_clear(gain_values));
-
             GRB_TRY(GrB_Vector_clear(gain_mask));
 
-            GrB_free(&AM_Semiring);
-            AM_Semiring = NULL;
-            GrB_free(&AM_mon);
-            AM_mon = NULL;
-            GrB_free(&AM_Bop);
-            AM_Bop = NULL;
-            GrB_free(&MAKEAMTUP_Bop);
-            MAKEAMTUP_Bop = NULL;
-            GrB_free(&MAKEAMTUP_op);
-            MAKEAMTUP_op = NULL;
+            // GrB_free(&AM_Semiring);
+            // AM_Semiring = NULL;
+            // GrB_free(&AM_mon);
+            // AM_mon = NULL;
+            // GrB_free(&AM_Bop);
+            // AM_Bop = NULL;
+            // GrB_free(&MAKEAMTUP_Bop);
+            // MAKEAMTUP_Bop = NULL;
+            // GrB_free(&MAKEAMTUP_op);
+            // MAKEAMTUP_op = NULL;
 
-            if (d_copy != NULL)
-            {
-                LAGraph_Free((void **)&d_copy, msg);
-                d_copy = NULL;
-            }
-            if (c_copy != NULL)
-            {
-                LAGraph_Free((void **)&c_copy, msg);
-                c_copy = NULL;
-            }
+            // if (d_copy != NULL)
+            // {
+            //     LAGraph_Free((void **)&d_copy, msg);
+            //     d_copy = NULL;
+            // }
+            // if (c_copy != NULL)
+            // {
+            //     LAGraph_Free((void **)&c_copy, msg);
+            //     c_copy = NULL;
+            // }
             GrB_free(&A_rows);
             A_rows = NULL;
         }

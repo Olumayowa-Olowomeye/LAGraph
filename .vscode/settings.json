@@ -4,7 +4,9 @@
         "lagraphx.h": "c",
         "random": "c",
         "string.h": "c",
-        "lagraph_demo.h": "c"
+        "lagraph_demo.h": "c",
+        "queue": "c",
+        "stack": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

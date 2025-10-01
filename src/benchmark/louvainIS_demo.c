@@ -1,6 +1,6 @@
 #include "LAGraph_demo.h"
-#define NTHREAD_LIST 7
-#define THREAD_LIST 32, 24, 16, 8, 4, 2, 1
+#define NTHREAD_LIST 6
+#define THREAD_LIST 24, 16, 8, 4, 2, 1
 #define LG_FREE_ALL              \
     {                            \
         GrB_free(&S);            \
@@ -20,25 +20,23 @@
     }
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 // #define newseed(seed) ()
+
 int main(int argc, char **argv)
 {
     char msg[LAGRAPH_MSG_LEN];
-
     LAGraph_Graph G = NULL;
-
-    // GrB_Matrix A = NULL ;
     GrB_Matrix S = NULL;
     FILE *f = NULL;
-    GrB_Info info;
-    bool burble = false;
-    demo_init(burble);
-
+    double t_start, t_elapsed;
+    uint64_t seed_base = 1224;
     int nt = NTHREAD_LIST;
     int Nthreads[20] = {0, THREAD_LIST};
     int nthreads_max, nthreads_outer, nthreads_inner;
+
+    demo_init(false);
     LAGRAPH_TRY(LAGraph_GetNumThreads(&nthreads_outer, &nthreads_inner, msg));
     nthreads_max = nthreads_outer * nthreads_inner;
-    
+
     if (Nthreads[1] == 0)
     {
         Nthreads[1] = nthreads_max;
@@ -54,44 +52,32 @@ int main(int argc, char **argv)
     for (int t = 1; t <= nt; t++)
     {
         int nthreads = Nthreads[t];
-        if (nthreads > nthreads_max)
-            continue;
+        if (nthreads > nthreads_max) continue;
         printf(" %d", nthreads);
     }
     printf("\n");
 
     char *matrix_name = (argc > 1) ? argv[1] : "stdin";
-    LAGRAPH_TRY(readproblem(&G, NULL,
-                            false, false, true, NULL, false, argc, argv));
-    GrB_Index n, nvals;
-    GRB_TRY(GrB_Matrix_nrows(&n, G->A));
-    GRB_TRY(GrB_Matrix_nvals(&nvals, G->A));
+    LAGRAPH_TRY(readproblem(&G, NULL, false, false, true, NULL, false, argc, argv));
+
+    // Warmup run
     LAGRAPH_TRY(LAGraph_SetNumThreads(1, nthreads_max, msg));
-    // GxB_print(G->A,5);
-    uint64_t seed = 1224;
+    seed_base = 12423259834;
+    t_start = LAGraph_WallClockTime();
+    LAGRAPH_TRY(LAGraph_LouvainIS(&S, seed_base, G, msg));
+    t_elapsed = LAGraph_WallClockTime() - t_start;
+    printf("Warmup: %10.4f sec\n", t_elapsed);
 
-    double t1 = LAGraph_WallClockTime();
-    LAGRAPH_TRY(LAGraph_LouvainIS(&S, seed, G, msg));
-    t1 = LAGraph_WallClockTime() - t1;
-    // GxB_print(G->A,5);
-    printf("warmup: %10.4f sec\n", t1);
-
-    double Q = 0;
-    GrB_Index comms;
-
-    LAGRAPH_TRY(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
-    printf("Q:%f\n", Q);
-
-    int ntrials = 16;
-    printf("# of trials: %d\n", ntrials);
+    int ntrials = 5;
+    printf("# of trials per thread: %d\n", ntrials);
 
     for (int kk = 1; kk <= nt; kk++)
     {
         int nthreads = Nthreads[kk];
-        if (nthreads > nthreads_max)
-            continue;
+        if (nthreads > nthreads_max) continue;
+
         LAGRAPH_TRY(LAGraph_SetNumThreads(1, nthreads, msg));
-        printf("\n--------------------------- nthreads: %2d\n", nthreads);
+        printf("\n--- nthreads: %2d ---\n", nthreads);
 
         double total_time = 0;
         double total_mod = 0;
@@ -100,31 +86,30 @@ int main(int argc, char **argv)
         for (int trial = 0; trial < ntrials; trial++)
         {
             GrB_free(&S);
-            Q = 0;
-            printf("seed: %ld\n", seed);
-            // GxB_print(G->A,5);
-            double t1 = LAGraph_WallClockTime();
-            LAGRAPH_TRY(LAGraph_LouvainIS(&S, seed, G, msg));
-            t1 = LAGraph_WallClockTime() - t1;
-            printf("trial: %2d time: %10.8f sec\n", trial, t1);
-            // GxB_print(G->A,5);
-            // GxB_print(S,5);
-            LAGRAPH_TRY(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
-            printf("Q:%f\n", Q);
+            seed_base += 13 << trial ;
+            double Q = 0;
 
-            // printf("Number of communities: %3d\n\n",comms);
-            total_time += t1;
+            t_start = LAGraph_WallClockTime();
+            LAGRAPH_TRY(LAGraph_LouvainIS(&S, seed_base, G, msg));
+            t_elapsed = LAGraph_WallClockTime() - t_start;
+
+            LAGRAPH_TRY(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
+
+            total_time += t_elapsed;
             total_mod += Q;
             max_mod = MAX(max_mod, Q);
+
+            printf("Trial %2d: time %10.6f sec, Q %f\n", trial, t_elapsed, Q);
         }
-        // boop
-        double t = total_time / ntrials;
-        printf("Avg Modularity: %f, avg time: %10.8f, Max modularity %f\n", total_mod / ntrials, t, max_mod);
+
+        double avg_time = total_time / ntrials;
+        double avg_mod = total_mod / ntrials;
+        printf("Threads: %2d | Avg time: %10.6f sec | Avg modularity: %f | Max modularity: %f\n",
+               nthreads, avg_time, avg_mod, max_mod);
         fflush(stdout);
-        fflush(stderr);
     }
 
     LG_FREE_ALL;
     LAGRAPH_TRY(LAGraph_Finalize(msg));
-    return (GrB_SUCCESS);
+    return 0;
 }

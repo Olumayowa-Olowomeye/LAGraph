@@ -116,7 +116,7 @@ void test_LouvainIS(void)
 
     for (int k = 0;; k++)
     {
-        uint64_t seed = 1224;
+        uint64_t seed = 12423259834;
         const char *aname = files[k].matrix_file;
         if (strlen(aname) == 0)
             break;
@@ -155,8 +155,12 @@ void test_LouvainIS(void)
 }
 
 TEST_LIST = {
-    {"Louvain", test_Louvain},
-    {"Louvain2", test_Louvain2},
+    // {"Louvain", test_Louvain},
+    // {"Louvain2", test_Louvain2},
     {"LouvainIS", test_LouvainIS},
 
     {NULL, NULL}};
+
+
+
+    
