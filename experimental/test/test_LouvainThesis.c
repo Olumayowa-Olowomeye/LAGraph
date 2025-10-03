@@ -26,8 +26,8 @@ typedef struct
 
 const matrix_info files[] = {
 
-    // {"comm0.mtx", 0.357142857142857},
-    // {"karate.mtx", .42},
+    {"comm0.mtx", 0.357142857142857},
+    {"karate.mtx", .42},
     {"20000node.mtx", .42},
 
     {"", -1}};

@@ -5,17 +5,17 @@
 #include <stdio.h>
 #include <time.h>
 
-#define DEBUG 1
+#define DEBUG 0
 #define check() printf("here")
 #define dbg(x) \
-    if (0) \
+    if (DEBUG) \
     GxB_print(x, 5)
 #define err(x, info)                                    \
     if (!(info == GrB_SUCCESS || info == GrB_NO_VALUE)) \
     {                                                   \
         char **err;                                     \
         GrB_error(err, x);                              \
-        printf("\ninfo: %d error: %s\n", info, *err);    \
+        printf("\ninfo: %d error: %s\n", info, err);    \
     }
 
 typedef struct Theta
@@ -24,12 +24,12 @@ typedef struct Theta
     double m;
     uint64_t seed;
 } Theta;
-#define THETA_DEFN         \
-    "typedef struct Theta" \
-    "{"                    \
-    "    double *d;"       \
-    "    double m;"        \
-    "    uint64_t seed;"   \
+#define THETA_DEFN                    \
+    "typedef struct Theta"            \
+    "{"                               \
+    "    double *d;"                  \
+    "    double m;"                   \
+    "    uint64_t seed;"              \
     "} Theta;"
 
 typedef struct argmax_tup
@@ -196,6 +196,33 @@ static GrB_Info build_argmax_operator(
     {                                    \
         GrB_free(&extract_k_if_gain_op); \
     }
+// GrB_free(&extract_k_op);     \
+        // GrB_free(&extract_score_op); \
+// void extract_k(void *out, const void *in)
+// {
+//     const argmax_tup *a = in;
+//     int64_t *k_out = out;
+//     *k_out = a->comm;
+// }
+// #define EXTRACT_K_SRC                               \
+//     "void extract_k(void *out, const void *in) {\n" \
+//     "    const argmax_tup *a = in;\n"               \
+//     "    int64_t *k_out = out;\n"                   \
+//     "    *k_out = a->comm;\n"                       \
+//     "}\n"
+
+// void extract_score(void *out, const void *in)
+// {
+//     const argmax_tup *a = in;
+//     double *score_out = out;
+//     *score_out = a->score;
+// }
+// #define EXTRACT_SCORE_SRC                               \
+//     "void extract_score(void *out, const void *in) {\n" \
+//     "    const argmax_tup *a = in;\n"                   \
+//     "    double *score_out = out;\n"                    \
+//     "    *score_out = a->score;\n"                      \
+//     "}\n"
 void extract_k_if_gain(void *out, const void *in)
 {
     const argmax_tup *a = in;
@@ -204,14 +231,20 @@ void extract_k_if_gain(void *out, const void *in)
     {
         *k_out = a->comm;
     }
+    else
+    {
+        *k_out = a->comm; // sentinel, will be masked out
+    }
 }
-#define EXTRACT_K_IF_GAIN_SRC                               \
-    "void extract_k_if_gain(void *out, const void *in) {\n" \
-    "    const argmax_tup *a = in;\n"                       \
-    "    int64_t *k_out = out;\n"                           \
-    "    if (a->score > 0.0) {\n"                           \
-    "        *k_out = a->comm;\n"                           \
-    "    }\n"                                               \
+#define EXTRACT_K_IF_GAIN_SRC                                       \
+    "void extract_k_if_gain(void *out, const void *in) {\n"         \
+    "    const argmax_tup *a = in;\n"                               \
+    "    int64_t *k_out = out;\n"                                   \
+    "    if (a->score > 0.0) {\n"                                   \
+    "        *k_out = a->comm;\n"                                   \
+    "    } else {\n"                                                \
+    "        *k_out = a->comm;   // sentinel, will be masked out\n" \
+    "    }\n"                                                       \
     "}\n"
 #undef LG_FREE_ALL
 #define LG_FREE_ALL                          \
@@ -333,7 +366,6 @@ int LAGraph_LouvainIS(
     GRB_TRY(GrB_Vector_new(&gain_values, GrB_FP64, n));
     GRB_TRY(GrB_Vector_new(&k_values, GrB_INT64, n));
     GRB_TRY(GrB_Vector_new(&gain_mask, GrB_BOOL, n));
-    // GRB_TRY(GrB_Vector_new(&Si_old,GrB_INT64,n));
 
     GRB_TRY(GrB_Matrix_new(&W, GrB_FP64, n, n));
     // GRB_TRY(GrB_Matrix_new(&A_iset, GrB_FP64, n, n));
@@ -368,7 +400,6 @@ int LAGraph_LouvainIS(
     dbg(S);
     GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
     GRB_TRY(GrB_Matrix_dup(&Si_old, S_container->i));
-    // GRB_TRY(GrB_assign(Si_old, NULL, NULL, S_container->i, GrB_ALL, n, GrB_DESC_S));
     dbg(Si_old);
     GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
     GRB_TRY(GrB_Matrix_reduce_Monoid(k, NULL, NULL, GrB_PLUS_MONOID_FP64, A, NULL));
@@ -446,7 +477,6 @@ int LAGraph_LouvainIS(
     double tsimple2 = LAGraph_WallClockTime();
     while (changed && iter < max_iter)
     {
-        fflush(stdout);
         recompute = changed;
         changed = false;
         for (int i = 0; i < loop; i++)
@@ -456,8 +486,7 @@ int LAGraph_LouvainIS(
             dbg(S);
             info = (GrB_mxm(W, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, A_iset[i], S, NULL));
             dbg(W);
-            if (recompute)
-            {
+            if(recompute){
                 GRB_TRY(GrB_vxm(y, NULL, NULL, GrB_PLUS_TIMES_SEMIRING_FP64, k, S, GrB_DESC_T0));
                 dbg(y);
             }
@@ -467,7 +496,6 @@ int LAGraph_LouvainIS(
             GRB_TRY(GxB_unload_Matrix_into_Container(S, S_container, NULL));
 
             GRB_TRY(GrB_Vector_apply(k_values, NULL, NULL, extract_k_if_gain_op, Wy, NULL));
-
             GRB_TRY(GrB_Matrix_nrows(&n_k_values, k_values));
             if (n_k_values > 0)
             {
@@ -487,13 +515,14 @@ int LAGraph_LouvainIS(
         changed = !changed;
         if (changed)
         { // skip if they are the same
-            GRB_TRY(GrB_assign(Si_old, Si_old, NULL, S_container->i, GrB_ALL, n, GrB_DESC_S));
+            GRB_TRY(GrB_assign(Si_old, NULL, NULL, S_container->i, GrB_ALL, n, GrB_DESC_S));
         }
 
         // GRB_TRY(GrB_Matrix_dup(&Si_old, S_container->i));
         GRB_TRY(GxB_load_Matrix_from_Container(S, S_container, NULL));
+        err(S, info);
         dbg(Si_old);
-        fflush(stdout); 
+
         iter++;
     }
     tsimple2 = LAGraph_WallClockTime() - tsimple2;
@@ -513,4 +542,4 @@ int LAGraph_LouvainIS(
     LG_ASSERT(false, GrB_NOT_IMPLEMENTED);
 #endif
     return 0;
-}
+}	
