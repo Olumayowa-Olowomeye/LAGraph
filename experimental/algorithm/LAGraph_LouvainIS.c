@@ -233,7 +233,7 @@ void extract_k_if_gain(void *out, const void *in)
     }
     else
     {
-        *k_out = a->comm; // sentinel, will be masked out
+        *k_out = a->comm; 
     }
 }
 #define EXTRACT_K_IF_GAIN_SRC                                       \
@@ -243,7 +243,7 @@ void extract_k_if_gain(void *out, const void *in)
     "    if (a->score > 0.0) {\n"                                   \
     "        *k_out = a->comm;\n"                                   \
     "    } else {\n"                                                \
-    "        *k_out = a->comm;   // sentinel, will be masked out\n" \
+    "        *k_out = a->comm;\n" \
     "    }\n"                                                       \
     "}\n"
 #undef LG_FREE_ALL
