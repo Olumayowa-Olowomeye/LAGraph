@@ -86,7 +86,7 @@ int main(int argc, char **argv)
         for (int trial = 0; trial < ntrials; trial++)
         {
             GrB_free(&S);
-            seed_base += 13 << trial ;
+            // seed_base += 13 << trial ;
             double Q = 0;
 
             t_start = LAGraph_WallClockTime();
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
 
         double avg_time = total_time / ntrials;
         double avg_mod = total_mod / ntrials;
-        printf("Threads: %2d | Avg time: %10.6f sec | Avg modularity: %f | Max modularity: %f\n",
+        printf("Threads: %2d | Avg time: %10.10f sec | Avg modularity: %f | Max modularity: %f\n",
                nthreads, avg_time, avg_mod, max_mod);
         fflush(stdout);
     }

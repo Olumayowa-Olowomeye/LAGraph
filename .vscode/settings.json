@@ -6,7 +6,8 @@
         "string.h": "c",
         "lagraph_demo.h": "c",
         "queue": "c",
-        "stack": "c"
+        "stack": "c",
+        "iterator": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

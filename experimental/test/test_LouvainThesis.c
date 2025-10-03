@@ -26,9 +26,10 @@ typedef struct
 
 const matrix_info files[] = {
 
-    {"comm0.mtx", 0.357142857142857},
-    {"karate.mtx", .42},
-    {"50node.mtx", .42},
+    // {"comm0.mtx", 0.357142857142857},
+    // {"karate.mtx", .42},
+    {"20000node.mtx", .42},
+
     {"", -1}};
 
 void test_Louvain(void)
@@ -141,9 +142,11 @@ void test_LouvainIS(void)
         // OK(LAGraph_Louvain_res(&S,G,.3,msg));
         tsimple = LAGraph_WallClockTime() - tsimple;
         double Q = 0.0; 
-
+        double tsimple2 = LAGraph_WallClockTime();
         OK(LAGr_Modularity2(&Q, 1.0, G->A, S, msg));
-        printf("Q:%f\n", Q);
+        tsimple2 = LAGraph_WallClockTime() - tsimple2;
+
+        printf("Q:%f time to calc Q: %f\n", Q,tsimple2);
         // printf("Number of Communities: %d",comms);
         printf(" time: %f\n", tsimple);
         GrB_free(&S);

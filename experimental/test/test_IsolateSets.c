@@ -16,10 +16,10 @@ typedef struct
 } matrix_info;
 const matrix_info files[] = {
 
-    {"comm0.mtx"},
-    {"res1.mtx"},
+    // {"comm0.mtx"},
+    // {"res1.mtx"},
     {"karate.mtx"},
-    {"50node.mtx"},
+    // {"20000node.mtx"},   0.000111 sec ]
     {""} 
 };
 

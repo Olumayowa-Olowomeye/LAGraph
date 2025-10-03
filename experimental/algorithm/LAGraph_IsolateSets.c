@@ -18,7 +18,7 @@
     GrB_free(&degree) ; \
 }
 #define DEBUG 0
-#define dbg(x) if (DEBUG) GxB_print(x,5)
+#define dbg(x) if (0) GxB_print(x,5)
 #define err(x, info)                                    \
     if (!(info == GrB_SUCCESS || info == GrB_NO_VALUE)) \
     {                                                   \
@@ -67,7 +67,7 @@ int LAGraph_IsolateSet(
     GRB_TRY (GrB_Matrix_nrows(&n,A));
     GRB_TRY (GrB_Vector_new(&iset,GrB_BOOL,n));
     GRB_TRY (GrB_Vector_new (&neighbor_max, GrB_FP64, n)) ;
-   GRB_TRY (GrB_Vector_new (&degree, GrB_FP64, n)) ;
+    GRB_TRY (GrB_Vector_new (&degree, GrB_FP64, n)) ;
     GRB_TRY (GrB_Vector_new (&new_members, GrB_BOOL, n)) ;
     GRB_TRY (GrB_Vector_new (&new_neighbors, GrB_BOOL, n)) ;
     GRB_TRY (GrB_Vector_new(&new_membersA,GrB_BOOL,n));
@@ -103,8 +103,7 @@ int LAGraph_IsolateSet(
     dbg(score);
 
     dbg(candidates);
-    GRB_TRY (GrB_vxm (scoreA, candidates, NULL,
-        GrB_MAX_FIRST_SEMIRING_FP64, score, A, GrB_DESC_RS)) ;
+    GRB_TRY (GrB_vxm (scoreA, candidates, NULL,GrB_MAX_FIRST_SEMIRING_FP64, score, A, GrB_DESC_RS)) ;
     dbg(scoreA);
     GRB_TRY (GrB_vxm (neighbor_max, candidates, NULL,GrB_MAX_FIRST_SEMIRING_FP64, scoreA, A, GrB_DESC_RS)) ;
     dbg(neighbor_max);
@@ -158,7 +157,7 @@ int LAGraph_IsolateSets(
     GrB_Matrix result = NULL;
     GRB_TRY(GrB_Matrix_new(&result, GrB_BOOL, max_k, n));
 
-   GrB_Vector iset = NULL;              // start NULL -- LAGraph_IsolateSet will allocate
+    GrB_Vector iset = NULL;              // start NULL -- LAGraph_IsolateSet will allocate
     GrB_Index k = 0;
     GrB_Index vals_res = 0;
 
